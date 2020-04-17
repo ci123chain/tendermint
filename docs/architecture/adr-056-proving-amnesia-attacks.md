@@ -48,14 +48,14 @@ type PotentialAmnesiaEvidence struct {
 
 The evidence should contain the precommit votes for the intersection of validators that voted for both rounds. The votes should be all valid and the height and time that the infringement was made should be within:
 
-`Trusting period - Amnesia trial period - Gossip safety margin`
+`MaxEvidenceAge - Amnesia trial period`
 
-where `Amnesia trial period` is a configurable duration defaulted at 1 day and `Gossip safety margin` is the average time for all validators in a network to receive a message (an estimation based on the size of the network).
+where `Amnesia trial period` is a configurable duration defaulted at 1 day.
 
 With reference to the honest nodes, C1 and C2, in the schematic, C2 will not PRECOMMIT an earlier round, but it is likely, if a node in C1 were to receive +2/3 PREVOTE's or PRECOMMIT's for a higher round, that it would remove the lock and PREVOTE and PRECOMMIT for the later round. Therefore, unfortunately it is not a case of simply punishing all nodes that have double voted in the `PotentialAmnesiaEvidence`.
 
 Instead we use the Proof of Lock Change (PoLC) referred to in the [consensus spec](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md#terms). When an honest node votes again for a different block in a later round
-(which will only occur in very rare cases), it will generate the PoLC and store it in the evidence reactor for a time equal to the `Trusting Period`
+(which will only occur in very rare cases), it will generate the PoLC and store it in the evidence reactor for a time equal to the `MaxEvidenceAge`
 
 ```golang
 type ProofOfLockChange struct {
@@ -88,7 +88,7 @@ When, `time.Now() > PotentialAmnesiaEvidence.timestamp + AmnesiaTrialPeriod`, ho
 Other validators will vote <nil> if:
 
 - The Amnesia Evidence is not valid
-- The Amensia Evidence is not within the validators trial period - the gossip safety margin i.e. too soon.
+- The Amensia Evidence is not within the validators trial period i.e. too soon.
 - The Amensia Evidence is of the same height but is different to the Amnesia Evidence that they have. i.e. is missing proofs.
     (In this case, the validator will try again to gossip the latest Amnesia Evidence that it has)
 - Is of an AmnesiaEvidence that has already been committed to the chain.
