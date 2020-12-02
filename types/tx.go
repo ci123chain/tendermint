@@ -2,8 +2,10 @@ package types
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 
 	amino "github.com/tendermint/go-amino"
 
@@ -26,6 +28,10 @@ func (tx Tx) Hash() []byte {
 // String returns the hex-encoded transaction as a string.
 func (tx Tx) String() string {
 	return fmt.Sprintf("Tx{%X}", []byte(tx))
+}
+// String returns the hex-encoded transaction as a string.
+func (tx Tx) ID() string {
+	return strings.ToUpper(hex.EncodeToString(tx.Hash()))
 }
 
 // Txs is a slice of Tx.
@@ -119,6 +125,7 @@ type TxResult struct {
 	Height int64                  `json:"height"`
 	Index  uint32                 `json:"index"`
 	Tx     Tx                     `json:"tx"`
+	TxID   string 				  `json:"tx_id, omitempty"`
 	Result abci.ResponseDeliverTx `json:"result"`
 }
 

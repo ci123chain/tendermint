@@ -462,6 +462,7 @@ func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *ty
 			Height: block.Height,
 			Index:  uint32(i),
 			Tx:     tx,
+			TxID: 	tx.ID(),
 			Result: *(abciResponses.DeliverTx[i]),
 		}})
 	}
