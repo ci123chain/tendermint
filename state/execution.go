@@ -472,6 +472,7 @@ func fireEvents(
 			Height: block.Height,
 			Index:  uint32(i),
 			Tx:     tx,
+			TxID:   tx.ID(),
 			Result: *(abciResponses.DeliverTxs[i]),
 		}})
 	}

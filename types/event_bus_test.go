@@ -51,6 +51,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 		Height: 1,
 		Index:  0,
 		Tx:     tx,
+		TxID:   tx.ID(),
 		Result: result,
 	}})
 	assert.NoError(t, err)
