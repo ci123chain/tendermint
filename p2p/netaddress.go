@@ -8,6 +8,9 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"github.com/tendermint/tendermint/config"
+	log2 "github.com/tendermint/tendermint/libs/log"
+	tls2 "github.com/tendermint/tendermint/p2p/tls"
 	"net"
 	"strconv"
 	"strings"
@@ -16,12 +19,33 @@ import (
 	"github.com/pkg/errors"
 )
 
+
+var (
+	Config *config.Config
+	loger log2.Logger
+	//node_store *NodeStore
+)
+
+func SetP2PConfig(conf *config.Config) {
+	Config = conf
+}
+
+func SetLogger(logger log2.Logger) {
+	loger = logger
+}
+
+//func SetStore(s *NodeStore) {
+//	node_store = s
+//}
+
 // NetAddress defines information about a peer on the network
 // including its ID, IP address, and port.
 type NetAddress struct {
 	ID   ID     `json:"id"`
 	IP   net.IP `json:"ip"`
 	Port uint16 `json:"port"`
+
+	Host  string  `json:"host"`
 
 	// TODO:
 	// Name string `json:"name"` // optional DNS name
@@ -62,8 +86,20 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 	port := uint16(tcpAddr.Port)
 	na := NewNetAddressIPPort(ip, port)
 	na.ID = id
+	//host := ""
+	//na.Host = host
 	return na
 }
+
+/////http request.
+/////get server_name of ip.
+//func queryServerName(ip net.IP) string {
+//	if Config.P2P.TLSOption {
+//		return node_store.Get(ip.String())
+//	}else {
+//		return ip.String()
+//	}
+//}
 
 // NewNetAddressString returns a new NetAddress using the provided address in
 // the form of "ID@IP:Port".
@@ -110,6 +146,7 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 
 	na := NewNetAddressIPPort(ip, uint16(port))
 	na.ID = id
+	na.Host = host
 	return na, nil
 }
 
@@ -195,12 +232,39 @@ func (na *NetAddress) Dial() (net.Conn, error) {
 }
 
 // DialTimeout calls net.DialTimeout on the address.
-func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
+func (na *NetAddress) DialTimeout2(timeout time.Duration) (net.Conn, error) {
 	conn, err := net.DialTimeout("tcp", na.DialString(), timeout)
 	if err != nil {
 		return nil, err
 	}
 	return conn, nil
+}
+
+func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
+	loger.Info("TLS Option:", "tls", Config.P2P.TLSOption)
+	loger.Info("TLS Config:", "local_bind_address_ip",Config.TLSConfig.BindAddressIP,
+		"local_bind_port", Config.TLSConfig.BindAddressPort,
+		"remote_host", Config.TLSConfig.RemoteAddressHOST,
+		"remote_port", Config.TLSConfig.RemoteAddressPort,
+		"remote_server_name", Config.TLSConfig.RemoteServerName,
+		"remote_insecure_skip_verify", Config.TLSConfig.RemoteTLSInsecureSkipVerify,
+	)
+	if Config.P2P.TLSOption {
+		Config.TLSConfig.Mutex.Lock()
+		loger.Info("get netAddress", "host", na.Host, "port", na.Port)
+		tls2.SetRemoteNOdeAddress(na.Host, int(na.Port))
+		Config.TLSConfig.Mutex.Unlock()
+		localHost := fmt.Sprintf("%s:%s", Config.TLSConfig.BindAddressIP, strconv.FormatUint(uint64(Config.TLSConfig.BindAddressPort), 10))
+		loger.Info("dial host", "host", localHost)
+		conn, err := net.DialTimeout("tcp", localHost, timeout)
+		if err != nil {
+			loger.Error("dial error", "err", err.Error())
+			return nil, err
+		}
+		return conn, nil
+	}else {
+		return na.DialTimeout2(timeout)
+	}
 }
 
 // Routable returns true if the address is routable.

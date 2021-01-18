@@ -68,6 +68,10 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 		"unsubscribe":     rpcserver.NewWSRPCFunc(c.(Wrapper).UnsubscribeWS, "query"),
 		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.(Wrapper).UnsubscribeAllWS, ""),
 
+
+		//add server name
+		"add_peers":  rpcserver.NewRPCFunc(makeAddPeers(c),"peers"),
+
 		// info API
 		"status":     rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
 		"blockchain": rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
@@ -85,6 +89,12 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 		// abci API
 		"abci_query": rpcserver.NewRPCFunc(makeABCIQueryFunc(c), "path,data"),
 		"abci_info":  rpcserver.NewRPCFunc(makeABCIInfoFunc(c), ""),
+	}
+}
+
+func makeAddPeers(c rpcclient.Client) func(ctx *rpctypes.Context, peers string) error {
+	return func(ctx *rpctypes.Context, peers string) error {
+		return c.AddPeers(peers)
 	}
 }
 

@@ -69,6 +69,10 @@ func (c *Local) Status() (*ctypes.ResultStatus, error) {
 	return core.Status(c.ctx)
 }
 
+func (c *Local) AddPeers(peers string) error {
+	return core.AddPeers(c.ctx, peers)
+}
+
 func (c *Local) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return core.ABCIInfo(c.ctx)
 }

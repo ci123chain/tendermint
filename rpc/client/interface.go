@@ -39,6 +39,7 @@ type Client interface {
 	SignClient
 	StatusClient
 	EvidenceClient
+	PeerClient
 }
 
 // ABCIClient groups together the functionality that principally affects the
@@ -79,6 +80,11 @@ type HistoryClient interface {
 // StatusClient provides access to general chain info.
 type StatusClient interface {
 	Status() (*ctypes.ResultStatus, error)
+}
+
+//PeerClient provides access to add peer.
+type PeerClient interface {
+	AddPeers(peers string) error
 }
 
 // NetworkClient is general info about the network state. May not be needed

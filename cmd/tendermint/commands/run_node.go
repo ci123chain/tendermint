@@ -2,6 +2,8 @@ package commands
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/tls"
 
 	"github.com/spf13/cobra"
 
@@ -39,6 +41,13 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("p2p.seed_mode", config.P2P.SeedMode, "Enable/disable seed mode")
 	cmd.Flags().String("p2p.private_peer_ids", config.P2P.PrivatePeerIDs, "Comma-delimited private peer IDs")
 
+	//tls config
+	cmd.Flags().Bool("p2p.tls_option", config.P2P.TLSOption, "Enable/disable tls_option")
+	cmd.Flags().Int("tls_config.bind_address_port", config.TLSConfig.BindAddressPort, "tls listen port")
+	cmd.Flags().String("tls_config.remote_address_host", config.TLSConfig.RemoteAddressHOST, "remote host")
+	cmd.Flags().Int("tls_config.remote_address_port", config.TLSConfig.RemoteAddressPort, "remote port")
+	cmd.Flags().Bool("tls_config.remote_tls_insecure_skip_verify", config.TLSConfig.RemoteTLSInsecureSkipVerify, "Enable/Disable gateway skip verify")
+
 	// consensus flags
 	cmd.Flags().Bool("consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
 }
@@ -50,6 +59,8 @@ func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 		Use:   "node",
 		Short: "Run the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var b = config
+			fmt.Println(b.P2P.PersistentPeers)
 			n, err := nodeProvider(config, logger)
 			if err != nil {
 				return fmt.Errorf("Failed to create node: %v", err)
@@ -62,10 +73,31 @@ func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 				}
 			})
 
+			var newCfg = n.Config()
+			//var node_store = p2p.NewNodeStore()
+			p2p.SetP2PConfig(newCfg)
+			p2p.SetLogger(logger)
+			//p2p.SetStore(node_store)
+			tls.SetTLSConfig(newCfg.TLSConfig)
+			tls.SetLogger(logger)
+			if newCfg.P2P.TLSOption {
+				tls.NewTLS()
+				logger.Info("Started TLS")
+			}
+
 			if err := n.Start(); err != nil {
 				return fmt.Errorf("Failed to start node: %v", err)
 			}
 			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
+			//var newCfg = n.Config()
+			//p2p.SetP2PConfig(newCfg.P2P)
+			//p2p.SetLogger(logger)
+			//tls.SetTLSConfig(newCfg.P2P.TLSConfig)
+			//tls.SetLogger(logger)
+			//if newCfg.P2P.TLSOption {
+			//	tls.NewTLS()
+			//}
+			//logger.Info("Started TLS")
 
 			// Run forever.
 			select {}

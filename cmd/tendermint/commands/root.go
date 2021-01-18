@@ -26,14 +26,21 @@ func registerFlagsRootCmd(cmd *cobra.Command) {
 	cmd.PersistentFlags().String("log_level", config.LogLevel, "Log level")
 }
 
+//func GetConfig() *cfg.Config {
+//	return config
+//}
+
 // ParseConfig retrieves the default environment configuration,
 // sets up the Tendermint root and ensures that the root exists
 func ParseConfig() (*cfg.Config, error) {
 	conf := cfg.DefaultConfig()
+	//all_setting := viper.AllSettings()
+	//fmt.Println(all_setting)
 	err := viper.Unmarshal(conf)
 	if err != nil {
 		return nil, err
 	}
+	//fmt.Println(viper.AllSettings())
 	conf.SetRoot(conf.RootDir)
 	cfg.EnsureRoot(conf.RootDir)
 	if err = conf.ValidateBasic(); err != nil {

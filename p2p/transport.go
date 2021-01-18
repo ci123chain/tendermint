@@ -210,6 +210,7 @@ func (mt *MultiplexTransport) Dial(
 
 	secretConn, nodeInfo, err := mt.upgrade(c, &addr)
 	if err != nil {
+		c.Close()
 		return nil, err
 	}
 
@@ -246,6 +247,25 @@ func (mt *MultiplexTransport) Listen(addr NetAddress) error {
 	return nil
 }
 
+//func (mt *MultiplexTransport) Listen2(addr NetAddress) error {
+//	config := &tls.Config{
+//		//Certificates:    []tls.Certificate{cert},
+//		InsecureSkipVerify: true,
+//		ClientAuth:   tls.RequireAndVerifyClientCert,
+//		//ClientCAs:    clientCertPool,
+//	}
+//	ln, err := tls.Listen("tcp", ":9000", config)
+//	if err != nil {
+//		return err
+//	}
+//	mt.netAddr = addr
+//	mt.listener = ln
+//
+//	go mt.acceptPeers()
+//
+//	return nil
+//}
+
 func (mt *MultiplexTransport) acceptPeers() {
 	for {
 		c, err := mt.listener.Accept()
@@ -275,7 +295,6 @@ func (mt *MultiplexTransport) acceptPeers() {
 				secretConn *conn.SecretConnection
 				netAddr    *NetAddress
 			)
-
 			err := mt.filterConn(c)
 			if err == nil {
 				secretConn, nodeInfo, err = mt.upgrade(c, nil)
