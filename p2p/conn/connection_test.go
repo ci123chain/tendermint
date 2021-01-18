@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	amino "github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/libs/log"
 )
 
@@ -26,7 +27,11 @@ func createTestMConnection(conn net.Conn) *MConnection {
 	return c
 }
 
-func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *MConnection {
+func createMConnectionWithCallbacks(
+	conn net.Conn,
+	onReceive func(chID byte, msgBytes []byte),
+	onError func(r interface{}),
+) *MConnection {
 	cfg := DefaultMConnConfig()
 	cfg.PingInterval = 90 * time.Millisecond
 	cfg.PongTimeout = 45 * time.Millisecond
@@ -133,7 +138,7 @@ func TestMConnectionReceive(t *testing.T) {
 
 	select {
 	case receivedBytes := <-receivedCh:
-		assert.Equal(t, []byte(msg), receivedBytes)
+		assert.Equal(t, msg, receivedBytes)
 	case err := <-errorsCh:
 		t.Fatalf("Expected %s, got %+v", msg, err)
 	case <-time.After(500 * time.Millisecond):

@@ -6,6 +6,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/pkg/errors"
+	"golang.org/x/net/netutil"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
@@ -85,7 +88,7 @@ func ConnDuplicateIPFilter() ConnFilterFunc {
 			if cs.HasIP(ip) {
 				return ErrRejected{
 					conn:        c,
-					err:         fmt.Errorf("IP<%v> already connected", ip),
+					err:         fmt.Errorf("ip<%v> already connected", ip),
 					isDuplicate: true,
 				}
 			}
@@ -120,11 +123,18 @@ func MultiplexTransportResolver(resolver IPResolver) MultiplexTransportOption {
 	return func(mt *MultiplexTransport) { mt.resolver = resolver }
 }
 
+// MultiplexTransportMaxIncomingConnections sets the maximum number of
+// simultaneous connections (incoming). Default: 0 (unlimited)
+func MultiplexTransportMaxIncomingConnections(n int) MultiplexTransportOption {
+	return func(mt *MultiplexTransport) { mt.maxIncomingConnections = n }
+}
+
 // MultiplexTransport accepts and dials tcp connections and upgrades them to
 // multiplexed peers.
 type MultiplexTransport struct {
-	netAddr  NetAddress
-	listener net.Listener
+	netAddr                NetAddress
+	listener               net.Listener
+	maxIncomingConnections int // see MaxIncomingConnections
 
 	acceptc chan accept
 	closec  chan struct{}
@@ -239,6 +249,10 @@ func (mt *MultiplexTransport) Listen(addr NetAddress) error {
 		return err
 	}
 
+	if mt.maxIncomingConnections > 0 {
+		ln = netutil.LimitListener(ln, mt.maxIncomingConnections)
+	}
+
 	mt.netAddr = addr
 	mt.listener = ln
 
@@ -290,6 +304,23 @@ func (mt *MultiplexTransport) acceptPeers() {
 		//
 		// [0] https://en.wikipedia.org/wiki/Head-of-line_blocking
 		go func(c net.Conn) {
+			defer func() {
+				if r := recover(); r != nil {
+					err := ErrRejected{
+						conn:          c,
+						err:           errors.Errorf("recovered from panic: %v", r),
+						isAuthFailure: true,
+					}
+					select {
+					case mt.acceptc <- accept{err: err}:
+					case <-mt.closec:
+						// Give up if the transport was closed.
+						_ = c.Close()
+						return
+					}
+				}
+			}()
+
 			var (
 				nodeInfo   NodeInfo
 				secretConn *conn.SecretConnection
