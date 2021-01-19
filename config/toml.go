@@ -277,7 +277,7 @@ handshake_timeout = "{{ .P2P.HandshakeTimeout }}"
 dial_timeout = "{{ .P2P.DialTimeout }}"
 
 # TLS option
-tls_option = "{{ .P2P.TLSOption }}"
+tls_option = {{ .P2P.TLSOption }}
 
 [tls_config]
 #BindAddressIP
