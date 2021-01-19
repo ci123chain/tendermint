@@ -2,9 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/tls"
-
 	"github.com/spf13/cobra"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -73,17 +70,17 @@ func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 				}
 			})
 
-			var newCfg = n.Config()
-			//var node_store = p2p.NewNodeStore()
-			p2p.SetP2PConfig(newCfg)
-			p2p.SetLogger(logger)
-			//p2p.SetStore(node_store)
-			tls.SetTLSConfig(newCfg.TLSConfig)
-			tls.SetLogger(logger)
-			if newCfg.P2P.TLSOption {
-				tls.NewTLS()
-				logger.Info("Started TLS")
-			}
+			//var newCfg = n.Config()
+			////var node_store = p2p.NewNodeStore()
+			//p2p.SetP2PConfig(newCfg)
+			//p2p.SetLogger(logger)
+			////p2p.SetStore(node_store)
+			//tls.SetTLSConfig(newCfg.TLSConfig)
+			//tls.SetLogger(logger)
+			//if newCfg.P2P.TLSOption {
+			//	tls.NewTLS()
+			//	logger.Info("Started TLS")
+			//}
 
 			if err := n.Start(); err != nil {
 				return fmt.Errorf("Failed to start node: %v", err)
