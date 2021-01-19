@@ -66,6 +66,7 @@ var (
 	consensusState Consensus
 	p2pPeers       peers
 	p2pTransport   transport
+	addrBook       p2p.AddrBook
 
 	// objects
 	pubKey           crypto.PubKey
@@ -82,6 +83,10 @@ var (
 
 func SetStateDB(db dbm.DB) {
 	stateDB = db
+}
+
+func SetAddrBook(book p2p.AddrBook) {
+	addrBook = book
 }
 
 func SetBlockStore(bs sm.BlockStore) {

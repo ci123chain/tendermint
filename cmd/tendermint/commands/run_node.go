@@ -115,16 +115,17 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 			if err := checkGenesisHash(config); err != nil {
 				return err
 			}
+			n, err := nodeProvider(config, logger)
 
 			if err != nil {
 				return fmt.Errorf("failed to create node: %w", err)
 			}
 
-			if err := n.Start(); err != nil {
-				return fmt.Errorf("failed to start node: %w", err)
-			}
-
-			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
+			//if err := n.Start(); err != nil {
+			//	return fmt.Errorf("failed to start node: %w", err)
+			//}
+			//
+			//logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 
 			// Stop upon receiving SIGTERM or CTRL-C.
 			tmos.TrapSignal(logger, func() {

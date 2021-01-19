@@ -40,11 +40,7 @@ type Client interface {
 	SignClient
 	StatusClient
 	EvidenceClient
-<<<<<<< HEAD
-	PeerClient
-=======
 	MempoolClient
->>>>>>> master
 }
 
 // ABCIClient groups together the functionality that principally affects the
