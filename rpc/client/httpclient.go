@@ -145,12 +145,13 @@ func (c *baseRPCClient) Status() (*ctypes.ResultStatus, error) {
 	return result, nil
 }
 
-func (c *baseRPCClient) AddPeers(peers string) error {
-	_, err := c.caller.Call("add_peers", map[string]interface{}{"peers": peers}, nil)
+func (c *baseRPCClient) AddPeers(peers string) (*ctypes.ResultAddPeers, error) {
+	result := new(ctypes.ResultAddPeers)
+	_, err := c.caller.Call("add_peers", map[string]interface{}{"peers": peers}, result)
 	if err != nil {
-		return errors.Wrap(err, "AddPeers")
+		return nil, errors.Wrap(err, "AddPeers")
 	}
-	return nil
+	return result, nil
 }
 
 func (c *baseRPCClient) ABCIInfo() (*ctypes.ResultABCIInfo, error) {

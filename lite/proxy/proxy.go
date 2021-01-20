@@ -92,8 +92,8 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 	}
 }
 
-func makeAddPeers(c rpcclient.Client) func(ctx *rpctypes.Context, peers string) error {
-	return func(ctx *rpctypes.Context, peers string) error {
+func makeAddPeers(c rpcclient.Client) func(ctx *rpctypes.Context, peers string) (*ctypes.ResultAddPeers, error) {
+	return func(ctx *rpctypes.Context, peers string) (*ctypes.ResultAddPeers, error) {
 		return c.AddPeers(peers)
 	}
 }

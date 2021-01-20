@@ -84,7 +84,7 @@ type StatusClient interface {
 
 //PeerClient provides access to add peer.
 type PeerClient interface {
-	AddPeers(peers string) error
+	AddPeers(peers string) (*ctypes.ResultAddPeers,error)
 }
 
 // NetworkClient is general info about the network state. May not be needed

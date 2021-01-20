@@ -69,7 +69,7 @@ func (c *Local) Status() (*ctypes.ResultStatus, error) {
 	return core.Status(c.ctx)
 }
 
-func (c *Local) AddPeers(peers string) error {
+func (c *Local) AddPeers(peers string) (*ctypes.ResultAddPeers,error) {
 	return core.AddPeers(c.ctx, peers)
 }
 
