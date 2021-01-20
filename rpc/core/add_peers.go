@@ -51,7 +51,7 @@ func parsePeers(peers string) ([]p2p.NetAddress, error) {
 		p.Host = ipList[0]
 		var port uint64
 		var err error
-		if len(idList) == 2 {
+		if len(ipList) == 2 {
 			port, err = strconv.ParseUint(ipList[1], 10, 64)
 			if err != nil {
 				return nil, err
