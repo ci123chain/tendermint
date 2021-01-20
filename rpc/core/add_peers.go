@@ -17,21 +17,21 @@ func AddPeers(ctx *rpctypes.Context, peers string) (*core_types.ResultAddPeers,e
 
 	pList, err := parsePeers(peers)
 	if err != nil {
-		return &core_types.ResultAddPeers{},err
+		return &core_types.ResultAddPeers{Success:false, Error:err.Error()},err
 	}
 
 	ourAddr, err := p2pTransport.NodeInfo().NetAddress()
 	if err != nil {
-		return &core_types.ResultAddPeers{},err
+		return &core_types.ResultAddPeers{Success:false, Error:err.Error()},err
 	}
 	for _, p := range pList {
 		err := addrBook.AddAddress(&p, ourAddr)
 		if  err != nil {
-			return &core_types.ResultAddPeers{},err
+			return &core_types.ResultAddPeers{Success:false, Error:err.Error()},err
 		}
 	}
 	addrBook.Save()
-	return &core_types.ResultAddPeers{},nil
+	return &core_types.ResultAddPeers{Success:true, Error:""},nil
 }
 
 func parsePeers(peers string) ([]p2p.NetAddress, error) {

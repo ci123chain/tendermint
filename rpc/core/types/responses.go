@@ -199,6 +199,11 @@ type ResultBroadcastEvidence struct {
 	Hash []byte `json:"hash"`
 }
 
+type ResultAddPeers struct {
+	Success  bool  `json:"success"`
+	Error    string  `json:"error"`
+}
+
 // empty results
 type (
 	ResultUnsafeFlushMempool struct{}
@@ -206,7 +211,7 @@ type (
 	ResultSubscribe          struct{}
 	ResultUnsubscribe        struct{}
 	ResultHealth             struct{}
-	ResultAddPeers           struct{}
+	//ResultAddPeers           struct{}
 )
 
 // Event data from a subscription
