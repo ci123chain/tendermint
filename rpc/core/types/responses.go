@@ -206,6 +206,7 @@ type (
 	ResultSubscribe          struct{}
 	ResultUnsubscribe        struct{}
 	ResultHealth             struct{}
+	ResultAddPeers           struct{}
 )
 
 // Event data from a subscription
