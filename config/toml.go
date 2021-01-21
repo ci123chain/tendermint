@@ -302,7 +302,7 @@ remote_tls_cert_uri = "{{ .TLSConfig.RemoteTLSCertURI }}"
 remote_tls_cert_key_uri = "{{ .TLSConfig.RemoteTLSCertKeyURI }}"
 
 #RemoteTLSDialTimeout
-remote_tl_dial_timeout = {{ .TLSConfig.RemoteTLSDialTimeout }}
+remote_tls_dial_timeout = {{ .TLSConfig.RemoteTLSDialTimeout }}
 
 #RemoteTLSInsecureSkipVerify
 remote_tls_insecure_skip_verify = {{ .TLSConfig.RemoteTLSInsecureSkipVerify }}

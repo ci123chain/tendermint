@@ -45,8 +45,8 @@ type TLSConfig struct {
 	RemoteServerName            string `mapstructure:"remote_server_name"`  ///remote node name.
 	RemoteTLSCertURI            string `mapstructure:"remote_tls_cert"`
 	RemoteTLSCertKeyURI         string `mapstructure:"remote_tls_cert_key"`
-	RemoteTLSDialTimeout        int    `mapstructure:"remote_dial_timeout"`
-	RemoteTLSInsecureSkipVerify bool   `mapstructure:"remote_insecure_skip_verify"` ///true means close verify.
+	RemoteTLSDialTimeout        int    `mapstructure:"remote_tls_dial_timeout"`
+	RemoteTLSInsecureSkipVerify bool   `mapstructure:"remote_tls_insecure_skip_verify"` ///true means close verify.
 }
 
 func DefaultTLSConfig() *TLSConfig {
