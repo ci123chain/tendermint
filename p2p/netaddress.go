@@ -46,6 +46,7 @@ type NetAddress struct {
 	Port uint16 `json:"port"`
 
 	Host  string  `json:"host"`
+	TLS   bool    `json:"tls"`
 
 	// TODO:
 	// Name string `json:"name"` // optional DNS name
@@ -102,13 +103,13 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 //}
 
 // NewNetAddressString returns a new NetAddress using the provided address in
-// the form of "ID@IP:Port".
+// the form of "ID@IP:Port@TLS".
 // Also resolves the host if host is not an IP.
 // Errors are of type ErrNetAddressXxx where Xxx is in (NoID, Invalid, Lookup)
 func NewNetAddressString(addr string) (*NetAddress, error) {
 	addrWithoutProtocol := removeProtocolIfDefined(addr)
 	spl := strings.Split(addrWithoutProtocol, "@")
-	if len(spl) != 2 {
+	if len(spl) != 2 && len(spl) != 3 {
 		return nil, ErrNetAddressNoID{addr}
 	}
 
@@ -117,7 +118,17 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
 	}
 	var id ID
+	var tls bool
 	id, addrWithoutProtocol = ID(spl[0]), spl[1]
+	if len(spl) == 3 {
+		if spl[2] != "tls" {
+			return nil, ErrNetAddressInvalid{addr, errors.New("invalid tls option, should be '@tls'")}
+		}else {
+			tls = true
+		}
+	}else {
+		tls = false
+	}
 
 	// get host and port
 	host, portStr, err := net.SplitHostPort(addrWithoutProtocol)
@@ -147,6 +158,7 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 	na := NewNetAddressIPPort(ip, uint16(port))
 	na.ID = id
 	na.Host = host
+	na.TLS = tls
 	return na, nil
 }
 
@@ -249,22 +261,43 @@ func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
 		"remote_server_name", Config.TLSConfig.RemoteServerName,
 		"remote_insecure_skip_verify", Config.TLSConfig.RemoteTLSInsecureSkipVerify,
 	)
-	if Config.P2P.TLSOption {
-		Config.TLSConfig.Mutex.Lock()
-		loger.Info("get netAddress", "host", na.Host, "port", na.Port)
-		tls2.SetRemoteNOdeAddress(na.Host, int(na.Port))
-		Config.TLSConfig.Mutex.Unlock()
-		localHost := fmt.Sprintf("%s:%s", Config.TLSConfig.BindAddressIP, strconv.FormatUint(uint64(Config.TLSConfig.BindAddressPort), 10))
-		loger.Info("dial host", "host", localHost)
-		conn, err := net.DialTimeout("tcp", localHost, timeout)
-		if err != nil {
-			loger.Error("dial error", "err", err.Error())
-			return nil, err
+	if na.TLS {
+		///tls peer
+		if Config.P2P.TLSOption {
+			Config.TLSConfig.Mutex.Lock()
+			loger.Info("get netAddress", "host", na.Host, "port", na.Port)
+			tls2.SetRemoteNOdeAddress(na.Host, int(na.Port))
+			Config.TLSConfig.Mutex.Unlock()
+			localHost := fmt.Sprintf("%s:%s", Config.TLSConfig.BindAddressIP, strconv.FormatUint(uint64(Config.TLSConfig.BindAddressPort), 10))
+			loger.Info("dial host", "host", localHost)
+			conn, err := net.DialTimeout("tcp", localHost, timeout)
+			if err != nil {
+				loger.Error("dial error", "err", err.Error())
+				return nil, err
+			}
+			return conn, nil
+		}else {
+			return nil, errors.New("the peer not support tls communication yet")
 		}
-		return conn, nil
 	}else {
 		return na.DialTimeout2(timeout)
 	}
+	//if Config.P2P.TLSOption {
+	//	Config.TLSConfig.Mutex.Lock()
+	//	loger.Info("get netAddress", "host", na.Host, "port", na.Port)
+	//	tls2.SetRemoteNOdeAddress(na.Host, int(na.Port))
+	//	Config.TLSConfig.Mutex.Unlock()
+	//	localHost := fmt.Sprintf("%s:%s", Config.TLSConfig.BindAddressIP, strconv.FormatUint(uint64(Config.TLSConfig.BindAddressPort), 10))
+	//	loger.Info("dial host", "host", localHost)
+	//	conn, err := net.DialTimeout("tcp", localHost, timeout)
+	//	if err != nil {
+	//		loger.Error("dial error", "err", err.Error())
+	//		return nil, err
+	//	}
+	//	return conn, nil
+	//}else {
+	//	return na.DialTimeout2(timeout)
+	//}
 }
 
 // Routable returns true if the address is routable.

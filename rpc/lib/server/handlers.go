@@ -296,12 +296,15 @@ func httpParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, r *http.Request) ([]re
 
 	values := make([]reflect.Value, len(rpcFunc.argNames))
 
+	var a = r.RequestURI
+	fmt.Println(a)
 	for i, name := range rpcFunc.argNames {
 		argType := rpcFunc.args[i+argsOffset]
 
 		values[i] = reflect.Zero(argType) // set default for that type
 
 		arg := GetParam(r, name)
+		fmt.Println(arg)
 		// log.Notice("param to arg", "argType", argType, "name", name, "arg", arg)
 
 		if "" == arg {

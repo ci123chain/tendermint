@@ -199,10 +199,10 @@ type ResultBroadcastEvidence struct {
 	Hash []byte `json:"hash"`
 }
 
-type ResultAddPeers struct {
-	Success  bool  `json:"success"`
-	Error    string  `json:"error"`
-}
+//type ResultAddPeers struct {
+//	Success  bool  `json:"success"`
+//	Error    string  `json:"error"`
+//}
 
 // empty results
 type (
@@ -211,7 +211,6 @@ type (
 	ResultSubscribe          struct{}
 	ResultUnsubscribe        struct{}
 	ResultHealth             struct{}
-	//ResultAddPeers           struct{}
 )
 
 // Event data from a subscription

@@ -29,13 +29,6 @@ type TrafficRemoteS struct {
 	RemoteTLSInsecureSkipVerify bool   `mapstructure:"remote_insecure_skip_verify"` ///true means close verify.
 }
 
-////tls config
-//type TLSConfig struct {
-//	Mutex  sync.Mutex
-//	TrafficLocalConfig TrafficLocalS    `mapstructure:"traffic_local"`
-//	TrafficRemote      TrafficRemoteS   `mapstructure:"traffic_remote"`
-//}
-
 type TLSConfig struct {
 	Mutex           sync.Mutex
 	BindAddressIP   string `mapstructure:"bind_address_ip"`
@@ -60,19 +53,6 @@ func DefaultTLSConfig() *TLSConfig {
 		RemoteTLSCertKeyURI:         "",
 		RemoteTLSDialTimeout:        5,
 		RemoteTLSInsecureSkipVerify: true,
-		//TrafficLocalConfig: TrafficLocalS{
-		//	BindAddressIP:   "127.0.0.1",
-		//	BindAddressPort: 9001,
-		//},
-		//TrafficRemote:      TrafficRemoteS{
-		//	RemoteAddressHOST:           "test-chain-tls-server.gw001.oneitfarm.com",
-		//	RemoteAddressPort:           7443,
-		//	RemoteServerName:            "",
-		//	RemoteTLSCertURI:            "",
-		//	RemoteTLSCertKeyURI:         "",
-		//	RemoteTLSDialTimeout:        5,
-		//	RemoteTLSInsecureSkipVerify: true,
-		//},
 	}
 }
 

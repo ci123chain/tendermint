@@ -70,7 +70,7 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 
 
 		//add server name
-		"add_peers":  rpcserver.NewRPCFunc(makeAddPeers(c),"peers"),
+		//"add_peers":  rpcserver.NewRPCFunc(makeAddPeers(c),"peers"),
 
 		// info API
 		"status":     rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
@@ -92,11 +92,11 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 	}
 }
 
-func makeAddPeers(c rpcclient.Client) func(ctx *rpctypes.Context, peers string) (*ctypes.ResultAddPeers, error) {
-	return func(ctx *rpctypes.Context, peers string) (*ctypes.ResultAddPeers, error) {
-		return c.AddPeers(peers)
-	}
-}
+//func makeAddPeers(c rpcclient.Client) func(ctx *rpctypes.Context, peers string) (*ctypes.ResultAddPeers, error) {
+//	return func(ctx *rpctypes.Context, peers string) (*ctypes.ResultAddPeers, error) {
+//		return c.AddPeers(peers)
+//	}
+//}
 
 func makeStatusFunc(c rpcclient.Client) func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {

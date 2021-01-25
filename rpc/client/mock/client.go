@@ -81,9 +81,9 @@ func (c Client) Status() (*ctypes.ResultStatus, error) {
 	return core.Status(&rpctypes.Context{})
 }
 
-func (c Client) AddPeers(peers string) (*ctypes.ResultAddPeers, error) {
-	return core.AddPeers(&rpctypes.Context{}, peers)
-}
+//func (c Client) AddPeers(peers string) (*ctypes.ResultAddPeers, error) {
+//	return core.AddPeers(&rpctypes.Context{}, peers)
+//}
 
 func (c Client) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return core.ABCIInfo(&rpctypes.Context{})

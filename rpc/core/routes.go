@@ -12,8 +12,8 @@ var Routes = map[string]*rpc.RPCFunc{
 	"unsubscribe":     rpc.NewWSRPCFunc(Unsubscribe, "query"),
 	"unsubscribe_all": rpc.NewWSRPCFunc(UnsubscribeAll, ""),
 
-	//set servername
-	"add_peers":      rpc.NewRPCFunc(AddPeers, "peers"),
+	////set servername
+	//"add_peers":      rpc.NewRPCFunc(AddPeers, "peers"),
 
 	// info API
 	"health":               rpc.NewRPCFunc(Health, ""),

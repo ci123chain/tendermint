@@ -566,8 +566,7 @@ func DefaultP2PConfig() *P2PConfig {
 		AllowDuplicateIP:        false,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
-		TLSOption:               true,////select tls.
-		//TLSConfig:               tls.DefaultTLSConfig(),//default tls config.
+		TLSOption:               false,////default not select tls.
 		TestDialFail:            false,
 		TestFuzz:                false,
 		TestFuzzConfig:          DefaultFuzzConnConfig(),
