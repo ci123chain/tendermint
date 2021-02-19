@@ -2,7 +2,6 @@ package log
 
 import (
 	"fmt"
-	logger "gitlab.oneitfarm.com/bifrost/cilog/v2"
 	"io"
 
 	kitlog "github.com/go-kit/kit/log"
@@ -52,55 +51,33 @@ func NewTMLoggerWithColorFn(w io.Writer, colorFn func(keyvals ...interface{}) te
 
 // Info logs a message at level Info.
 func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
-	switch {
-	case LogMode.TM():
-		lWithLevel := kitlevel.Info(l.srcLogger)
-		if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
-			errLogger := kitlevel.Error(l.srcLogger)
-			kitlog.With(errLogger, msgKey, msg).Log("err", err)
-		}
-
-	default:
-		logger.Infow(msg, keyvals...)
+	lWithLevel := kitlevel.Info(l.srcLogger)
+	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
+		errLogger := kitlevel.Error(l.srcLogger)
+		kitlog.With(errLogger, msgKey, msg).Log("err", err)
 	}
 }
 
 // Debug logs a message at level Debug.
 func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
-	switch {
-	case LogMode.TM():
-		lWithLevel := kitlevel.Debug(l.srcLogger)
-		if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
-			errLogger := kitlevel.Error(l.srcLogger)
-			kitlog.With(errLogger, msgKey, msg).Log("err", err)
-		}
-
-	default:
-		logger.Debugw(msg, keyvals...)
+	lWithLevel := kitlevel.Debug(l.srcLogger)
+	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
+		errLogger := kitlevel.Error(l.srcLogger)
+		kitlog.With(errLogger, msgKey, msg).Log("err", err)
 	}
 }
 
 // Error logs a message at level Error.
 func (l *tmLogger) Error(msg string, keyvals ...interface{}) {
-	switch {
-	case LogMode.TM():
-		lWithLevel := kitlevel.Error(l.srcLogger)
-		lWithMsg := kitlog.With(lWithLevel, msgKey, msg)
-		if err := lWithMsg.Log(keyvals...); err != nil {
-			lWithMsg.Log("err", err)
-		}
-
-	default:
-		logger.Errorw(msg, keyvals...)
+	lWithLevel := kitlevel.Error(l.srcLogger)
+	lWithMsg := kitlog.With(lWithLevel, msgKey, msg)
+	if err := lWithMsg.Log(keyvals...); err != nil {
+		lWithMsg.Log("err", err)
 	}
 }
 
 // With returns a new contextual logger with keyvals prepended to those passed
 // to calls to Info, Debug or Error.
 func (l *tmLogger) With(keyvals ...interface{}) Logger {
-	if LogMode.ZT() {
-		logger.With(keyvals...)
-	}
-
 	return &tmLogger{kitlog.With(l.srcLogger, keyvals...)}
 }
