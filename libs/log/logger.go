@@ -36,55 +36,36 @@ func NewSyncWriter(w io.Writer) io.Writer {
 	return kitlog.NewSyncWriter(w)
 }
 
-type LogModeV2 int8
-
-func (mode LogModeV2) TM() bool {
-	return mode != 0
-}
-
-func (mode LogModeV2) ZT() bool {
-	return mode == 0
-}
-
-var LogMode LogModeV2 = 1
-
 func InitZTLogger() {
 	// To pass test.
-	LogMode = 0
-	if os.Getenv("LOG_MODE") == "TM" {
-		LogMode = 1
+	appID := os.Getenv("IDG_APPID")
+	if len(appID) == 0 {
+		return
 	}
 
-	if LogMode.ZT() {
-		appID := os.Getenv("IDG_APPID")
-		if len(appID) == 0 {
-			panic("can not get env IDG_APPID")
-		}
+	conf := &logger.Conf{
+		Level:  zapcore.InfoLevel, // 输出日志等级
+		Caller: true,              // 是否开启记录调用文件夹+行数+函数名
+		// 输出到 redis 的日志全部都是 info 级别以上
+		// 不用填写 AppName, AppID 默认会从环境变量获取
+		AppInfo: &cilog.ConfigAppData{
+			AppVersion: os.Getenv("IDG_VERSION"),
+			Language:   "zh-cn",
+		},
+		HookConfig: &redis_hook.HookConfig{
+			Key:  "service_" + appID,            // 填写日志 key
+			Host: "redis-cluster-proxy-log.msp", // 填写 log proxy host
+			// k8s 集群内填写 redis-cluster-proxy-log.msp
+			Port: 6380, // 填写 log proxy port
+			// 默认填写 6380
+		},
+	}
 
-		conf := &logger.Conf{
-			Level:  zapcore.InfoLevel, // 输出日志等级
-			Caller: true,              // 是否开启记录调用文件夹+行数+函数名
-			// 输出到 redis 的日志全部都是 info 级别以上
-			// 不用填写 AppName, AppID 默认会从环境变量获取
-			AppInfo: &cilog.ConfigAppData{
-				AppVersion: os.Getenv("IDG_VERSION"),
-				Language:   "zh-cn",
-			},
-			HookConfig: &redis_hook.HookConfig{
-				Key:  "service_" + appID,            // 填写日志 key
-				Host: "redis-cluster-proxy-log.msp", // 填写 log proxy host
-				// k8s 集群内填写 redis-cluster-proxy-log.msp
-				Port: 6380, // 填写 log proxy port
-				// 默认填写 6380
-			},
-		}
-
-		err := logger.GlobalConfig(*conf)
-		if err != nil {
-			// 处理 logger 初始化错误
-			// log-proxy 连接失败会报错
-			// 若不影响程序执行，可忽视
-			panic(fmt.Sprintf("[ERR] Logger init error: %v", err))
-		}
+	err := logger.GlobalConfig(*conf)
+	if err != nil {
+		// 处理 logger 初始化错误
+		// log-proxy 连接失败会报错
+		// 若不影响程序执行，可忽视
+		panic(fmt.Sprintf("[ERR] Logger init error: %v", err))
 	}
 }
