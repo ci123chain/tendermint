@@ -36,10 +36,24 @@ func NewSyncWriter(w io.Writer) io.Writer {
 	return kitlog.NewSyncWriter(w)
 }
 
+type LogModeV2 int8
+const LogModeMid = 0
+const LogModeTM = 1
+func (mode LogModeV2) TM() bool {
+	return mode == LogModeTM
+}
+
+func (mode LogModeV2) ZT() bool {
+	return mode == LogModeMid
+}
+
+var LogMode LogModeV2 = 1
+
 func InitZTLogger() {
 	// To pass test.
 	appID := os.Getenv("IDG_APPID")
 	if len(appID) == 0 {
+		LogMode = LogModeTM
 		return
 	}
 
@@ -60,6 +74,7 @@ func InitZTLogger() {
 			// 默认填写 6380
 		},
 	}
+
 	err := logger.GlobalConfig(*conf)
 	if err != nil {
 		// 处理 logger 初始化错误
