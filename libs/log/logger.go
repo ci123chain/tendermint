@@ -60,7 +60,6 @@ func InitZTLogger() {
 			// 默认填写 6380
 		},
 	}
-
 	err := logger.GlobalConfig(*conf)
 	if err != nil {
 		// 处理 logger 初始化错误
