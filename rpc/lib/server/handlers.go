@@ -710,9 +710,6 @@ func (wsc *wsConnection) writeRoutine() {
 	pingTicker := time.NewTicker(wsc.pingPeriod)
 	defer func() {
 		pingTicker.Stop()
-		if err := wsc.baseConn.Close(); err != nil {
-			wsc.Logger.Error("Error closing connection", "err", err)
-		}
 	}()
 
 	// https://github.com/gorilla/websocket/issues/97
