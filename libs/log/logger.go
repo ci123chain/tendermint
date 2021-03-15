@@ -47,7 +47,7 @@ func (mode LogModeV2) ZT() bool {
 	return mode == LogModeMid
 }
 
-var LogMode LogModeV2 = 1
+var LogMode LogModeV2 = LogModeMid
 
 func InitZTLogger() {
 	// To pass test.
