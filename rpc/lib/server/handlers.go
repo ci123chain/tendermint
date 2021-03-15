@@ -437,6 +437,8 @@ type wsConnection struct {
 	baseConn   *websocket.Conn
 	writeChan  chan types.RPCResponse
 
+	readRoutineQuit chan struct{}
+
 	funcMap map[string]*RPCFunc
 	cdc     *amino.Codec
 
@@ -483,6 +485,7 @@ func NewWSConnection(
 		writeChanCapacity: defaultWSWriteChanCapacity,
 		readWait:          defaultWSReadWait,
 		pingPeriod:        defaultWSPingPeriod,
+		readRoutineQuit:   make(chan struct{}),
 	}
 	for _, option := range options {
 		option(wsc)
@@ -650,6 +653,7 @@ func (wsc *wsConnection) readRoutine() {
 					wsc.Logger.Error("Failed to read request", "err", err)
 				}
 				wsc.Stop()
+				close(wsc.readRoutineQuit)
 				return
 			}
 
@@ -706,9 +710,6 @@ func (wsc *wsConnection) writeRoutine() {
 	pingTicker := time.NewTicker(wsc.pingPeriod)
 	defer func() {
 		pingTicker.Stop()
-		if err := wsc.baseConn.Close(); err != nil {
-			wsc.Logger.Error("Error closing connection", "err", err)
-		}
 	}()
 
 	// https://github.com/gorilla/websocket/issues/97
@@ -744,6 +745,8 @@ func (wsc *wsConnection) writeRoutine() {
 				wsc.Stop()
 				return
 			}
+		case <-wsc.readRoutineQuit: // error in readRoutine
+			return
 		case <-wsc.Quit():
 			return
 		}
