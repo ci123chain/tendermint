@@ -52,6 +52,7 @@ type AddrBook interface {
 	RemoveAddress(*NetAddress)
 	HasAddress(*NetAddress) bool
 	Save()
+	String() string
 }
 
 // PeerFilterFunc to be implemented by filter hooks after a new Peer has been

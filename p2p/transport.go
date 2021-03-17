@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -208,7 +209,7 @@ func (mt *MultiplexTransport) Dial(
 		return nil, err
 	}
 
-	secretConn, nodeInfo, err := mt.upgrade(c, &addr)
+	secretConn, nodeInfo, err, _ := mt.upgrade(c, &addr)
 	if err != nil {
 		c.Close()
 		return nil, err
@@ -297,11 +298,13 @@ func (mt *MultiplexTransport) acceptPeers() {
 			)
 			err := mt.filterConn(c)
 			if err == nil {
-				secretConn, nodeInfo, err = mt.upgrade(c, nil)
+				secretConn, nodeInfo, err, netAddr = mt.upgrade(c, nil)
 				if err == nil {
 					addr := c.RemoteAddr()
 					id := PubKeyToID(secretConn.RemotePubKey())
-					netAddr = NewNetAddress(id, addr)
+					if netAddr == nil {
+						netAddr = NewNetAddress(id, addr)
+					}
 				}
 			}
 
@@ -376,7 +379,7 @@ func (mt *MultiplexTransport) filterConn(c net.Conn) (err error) {
 func (mt *MultiplexTransport) upgrade(
 	c net.Conn,
 	dialedAddr *NetAddress,
-) (secretConn *conn.SecretConnection, nodeInfo NodeInfo, err error) {
+) (secretConn *conn.SecretConnection, nodeInfo NodeInfo, err error, remote *NetAddress) {
 	defer func() {
 		if err != nil {
 			_ = mt.cleanup(c)
@@ -389,7 +392,15 @@ func (mt *MultiplexTransport) upgrade(
 			conn:          c,
 			err:           fmt.Errorf("secret conn failed: %v", err),
 			isAuthFailure: true,
-		}
+		},nil
+	}
+	remote, err = exchangeInfoConn(c, mt.handshakeTimeout, mt.netAddr)
+	if err != nil {
+		return nil, nil, ErrRejected{
+			conn:          c,
+			err:           fmt.Errorf("exchange host info failed: %v", err),
+			isAuthFailure: true,
+		}, nil
 	}
 
 	// For outgoing conns, ensure connection key matches dialed key.
@@ -405,7 +416,7 @@ func (mt *MultiplexTransport) upgrade(
 					dialedID,
 				),
 				isAuthFailure: true,
-			}
+			}, nil
 		}
 	}
 
@@ -415,7 +426,7 @@ func (mt *MultiplexTransport) upgrade(
 			conn:          c,
 			err:           fmt.Errorf("handshake failed: %v", err),
 			isAuthFailure: true,
-		}
+		}, nil
 	}
 
 	if err := nodeInfo.Validate(); err != nil {
@@ -423,7 +434,7 @@ func (mt *MultiplexTransport) upgrade(
 			conn:              c,
 			err:               err,
 			isNodeInfoInvalid: true,
-		}
+		}, nil
 	}
 
 	// Ensure connection key matches self reported key.
@@ -437,7 +448,7 @@ func (mt *MultiplexTransport) upgrade(
 				nodeInfo.ID(),
 			),
 			isAuthFailure: true,
-		}
+		}, nil
 	}
 
 	// Reject self.
@@ -447,7 +458,7 @@ func (mt *MultiplexTransport) upgrade(
 			conn:   c,
 			id:     nodeInfo.ID(),
 			isSelf: true,
-		}
+		}, nil
 	}
 
 	if err := mt.nodeInfo.CompatibleWith(nodeInfo); err != nil {
@@ -456,10 +467,13 @@ func (mt *MultiplexTransport) upgrade(
 			err:            err,
 			id:             nodeInfo.ID(),
 			isIncompatible: true,
-		}
+		}, nil
+	}
+	if dialedAddr == nil {
+		return secretConn, nodeInfo, nil, remote
 	}
 
-	return secretConn, nodeInfo, nil
+	return secretConn, nodeInfo, nil, nil
 }
 
 func (mt *MultiplexTransport) wrapPeer(
@@ -538,6 +552,42 @@ func handshake(
 	}
 
 	return peerNodeInfo, c.SetDeadline(time.Time{})
+}
+
+func exchangeInfoConn(c net.Conn, timeout time.Duration, add NetAddress) (*NetAddress, error) {
+
+	if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return nil, err
+	}
+	//remote, err := conn.ExchangeHost(c, add)
+	//if err != nil {
+	//	return nil, err
+	//}
+	var trs, _ = cmn.Parallel(
+		func(_ int) (val interface{}, err error, abort bool) {
+			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(c, add)
+			if err1 != nil {
+				return nil, err1, true
+			}
+			return nil, nil, false
+		},
+
+		func(_ int) (val interface{}, err error, abort bool) {
+			var remoteAddr NetAddress
+			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(c, &remoteAddr, 1024*1024)
+			if err2 != nil {
+				return nil, err2, true
+			}
+			return remoteAddr, nil, false
+		}, )
+
+	if trs.FirstError() != nil {
+		err := trs.FirstError()
+		return nil, err
+	}
+	remote := trs.FirstValue().(NetAddress)
+	return &remote, nil
+	//return remote, nil
 }
 
 func upgradeSecretConn(

@@ -11,6 +11,7 @@ import (
 	"math"
 	"math/rand"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -128,6 +129,15 @@ func (a *addrBook) init() {
 	for i := range a.bucketsOld {
 		a.bucketsOld[i] = make(map[string]*knownAddress)
 	}
+}
+
+func (a *addrBook) String() string {
+	var value = ""
+	for _, v := range a.addrLookup {
+		p := strconv.FormatUint(uint64(v.Addr.Port), 10)
+		value += v.Addr.Host + "@" + v.Addr.IP.String() + "#" + p + ";"
+	}
+	return value
 }
 
 // OnStart implements Service.
@@ -603,9 +613,9 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 		return ErrAddrBookSelf{addr}
 	}
 
-	if a.routabilityStrict && !addr.Routable() {
-		return ErrAddrBookNonRoutable{addr}
-	}
+	//if a.routabilityStrict && !addr.Routable() {
+	//	return ErrAddrBookNonRoutable{addr}
+	//}
 
 	ka := a.addrLookup[addr.ID]
 	if ka != nil {
