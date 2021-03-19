@@ -536,8 +536,6 @@ type P2PConfig struct {
 	// Peer connection configuration.
 	HandshakeTimeout time.Duration `mapstructure:"handshake_timeout"`
 	DialTimeout      time.Duration `mapstructure:"dial_timeout"`
-	TLSOption       bool           `mapstructure:"tls_option"`///tls option
-	//TLSConfig       *tls.TLSConfig      `mapstructure:"tls_config"`
 
 	// Testing params.
 	// Force dial to fail
@@ -566,7 +564,6 @@ func DefaultP2PConfig() *P2PConfig {
 		AllowDuplicateIP:        false,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
-		TLSOption:               false,////default not select tls.
 		TestDialFail:            false,
 		TestFuzz:                false,
 		TestFuzzConfig:          DefaultFuzzConnConfig(),
@@ -579,7 +576,6 @@ func TestP2PConfig() *P2PConfig {
 	cfg.ListenAddress = "tcp://0.0.0.0:36656"
 	cfg.FlushThrottleTimeout = 10 * time.Millisecond
 	cfg.AllowDuplicateIP = true
-	cfg.TLSOption = false
 	return cfg
 }
 
@@ -611,48 +607,6 @@ func (cfg *P2PConfig) ValidateBasic() error {
 	}
 	return nil
 }
-
-////TrafficLocalS is configure of local network options
-//type TrafficLocalS struct {
-//	BindAddressIP   string `yaml:"bind_address_ip"`
-//	BindAddressPort int    `yaml:"bind_address_port"`
-//}
-//
-////TrafficRemoteS is configure of remote tls options
-//type TrafficRemoteS struct {
-//	RemoteAddressHOST           string `yaml:"remote_address_host"` ///remote node host.
-//	RemoteAddressPort           int    `yaml:"remote_address_port"` ///gateway port.
-//	RemoteServerName            string `yaml:"remote_server_name"`  ///remote node name.
-//	RemoteTLSCertURI            string `yaml:"remote_tls_cert"`
-//	RemoteTLSCertKeyURI         string `yaml:"remote_tls_cert_key"`
-//	RemoteTLSDialTimeout        int    `yaml:"remote_dial_timeout"`
-//	RemoteTLSInsecureSkipVerify bool   `yaml:"remote_insecure_skip_verify"` ///true means close verify.
-//}
-//
-////tls config
-//type TLSConfig struct {
-//	Mutex               sync.Mutex
-//	TrafficLocalConfig TrafficLocalS    `yaml:"traffic_local"`
-//	TrafficRemote      TrafficRemoteS   `yaml:"traffic_remote"`
-//}
-//
-//func DefaultTLSConfig() *TLSConfig {
-//	return &TLSConfig{
-//		TrafficLocalConfig: TrafficLocalS{
-//			BindAddressIP:   "127.0.0.1",
-//			BindAddressPort: 9001,
-//		},
-//		TrafficRemote:      TrafficRemoteS{
-//			RemoteAddressHOST:           "",
-//			RemoteAddressPort:           0,
-//			RemoteServerName:            "",
-//			RemoteTLSCertURI:            "",
-//			RemoteTLSCertKeyURI:         "",
-//			RemoteTLSDialTimeout:        0,
-//			RemoteTLSInsecureSkipVerify: false,
-//		},
-//	}
-//}
 
 // FuzzConnConfig is a FuzzedConnection configuration.
 type FuzzConnConfig struct {

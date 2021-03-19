@@ -5,12 +5,12 @@
 package p2p
 
 import (
+	"crypto/tls"
 	"encoding/hex"
 	"flag"
 	"fmt"
 	"github.com/tendermint/tendermint/config"
 	log2 "github.com/tendermint/tendermint/libs/log"
-	tls2 "github.com/tendermint/tendermint/p2p/tls"
 	"net"
 	"strconv"
 	"strings"
@@ -252,52 +252,34 @@ func (na *NetAddress) DialTimeout2(timeout time.Duration) (net.Conn, error) {
 	return conn, nil
 }
 
+
 func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
-	loger.Info("TLS Option:", "tls", Config.P2P.TLSOption)
-	loger.Info("TLS Config:", "local_bind_address_ip",Config.TLSConfig.BindAddressIP,
-		"local_bind_port", Config.TLSConfig.BindAddressPort,
-		"remote_host", Config.TLSConfig.RemoteAddressHOST,
-		"remote_port", Config.TLSConfig.RemoteAddressPort,
-		"remote_server_name", Config.TLSConfig.RemoteServerName,
-		"remote_insecure_skip_verify", Config.TLSConfig.RemoteTLSInsecureSkipVerify,
-	)
+
 	if na.TLS {
-		///tls peer
-		if Config.P2P.TLSOption {
-			Config.TLSConfig.Mutex.Lock()
-			loger.Info("get netAddress", "host", na.Host, "port", na.Port)
-			tls2.SetRemoteNOdeAddress(na.Host, int(na.Port))
-			Config.TLSConfig.Mutex.Unlock()
-			localHost := fmt.Sprintf("%s:%s", Config.TLSConfig.BindAddressIP, strconv.FormatUint(uint64(Config.TLSConfig.BindAddressPort), 10))
-			loger.Info("dial host", "host", localHost)
-			conn, err := net.DialTimeout("tcp", localHost, timeout)
+		var cert tls.Certificate
+		var err error
+		//对于从ssl供应商获取的证书，可以不提供秘钥，前提是系统支持ROOT CA
+		if len(Config.TLSConfig.RemoteTLSCertKeyURI) != 0 && len(Config.TLSConfig.RemoteTLSCertKeyURI) != 0 {
+			cert, err = tls.LoadX509KeyPair(Config.TLSConfig.RemoteTLSCertURI, Config.TLSConfig.RemoteTLSCertKeyURI)
 			if err != nil {
-				loger.Error("dial error", "err", err.Error())
-				return nil, err
+				loger.Error("Initialize the certificate, the key failed", "err", err.Error())
+				return nil, errors.New(fmt.Sprintf("Initialize the certificate, the key failed", "err", err.Error()))
 			}
-			return conn, nil
-		}else {
-			return nil, errors.New("the peer not support tls communication yet")
 		}
+
+		c := tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: Config.TLSConfig.RemoteTLSInsecureSkipVerify,
+		}
+
+		remoteServer := fmt.Sprintf("%s:%s", na.Host, strconv.FormatUint(uint64(na.Port), 10))
+
+		return tls.DialWithDialer(&net.Dialer{
+			Timeout: time.Second * time.Duration(Config.TLSConfig.RemoteTLSDialTimeout),
+		}, "tcp", remoteServer, &c)
 	}else {
 		return na.DialTimeout2(timeout)
 	}
-	//if Config.P2P.TLSOption {
-	//	Config.TLSConfig.Mutex.Lock()
-	//	loger.Info("get netAddress", "host", na.Host, "port", na.Port)
-	//	tls2.SetRemoteNOdeAddress(na.Host, int(na.Port))
-	//	Config.TLSConfig.Mutex.Unlock()
-	//	localHost := fmt.Sprintf("%s:%s", Config.TLSConfig.BindAddressIP, strconv.FormatUint(uint64(Config.TLSConfig.BindAddressPort), 10))
-	//	loger.Info("dial host", "host", localHost)
-	//	conn, err := net.DialTimeout("tcp", localHost, timeout)
-	//	if err != nil {
-	//		loger.Error("dial error", "err", err.Error())
-	//		return nil, err
-	//	}
-	//	return conn, nil
-	//}else {
-	//	return na.DialTimeout2(timeout)
-	//}
 }
 
 // Routable returns true if the address is routable.

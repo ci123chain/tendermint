@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/tendermint/tendermint/p2p/tls"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -728,7 +727,8 @@ func NewNode(config *cfg.Config,
 
 // OnStart starts the Node. It implements cmn.Service.
 func (n *Node) OnStart() error {
-	n.StartTLS()
+	p2p.SetP2PConfig(n.Config())
+	p2p.SetLogger(n.Logger)
 	now := tmtime.Now()
 	genTime := n.genesisDoc.GenesisTime
 	if genTime.After(now) {
@@ -782,19 +782,6 @@ func (n *Node) OnStart() error {
 	}
 
 	return nil
-}
-
-func(n *Node) StartTLS() {
-	var newCfg = n.Config()
-	p2p.SetP2PConfig(newCfg)
-	p2p.SetLogger(n.Logger)
-	//p2p.SetStore(node_store)
-	tls.SetTLSConfig(newCfg.TLSConfig)
-	tls.SetLogger(n.Logger)
-	if newCfg.P2P.TLSOption {
-		tls.NewTLS()
-		n.Logger.Info("Started TLS")
-	}
 }
 
 // OnStop stops the Node. It implements cmn.Service.

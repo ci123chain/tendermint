@@ -38,11 +38,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("p2p.seed_mode", config.P2P.SeedMode, "Enable/disable seed mode")
 	cmd.Flags().String("p2p.private_peer_ids", config.P2P.PrivatePeerIDs, "Comma-delimited private peer IDs")
 
-	//tls config
-	cmd.Flags().Bool("p2p.tls_option", config.P2P.TLSOption, "Enable/disable tls_option")
-	cmd.Flags().Int("tls_config.bind_address_port", config.TLSConfig.BindAddressPort, "tls listen port")
-	cmd.Flags().String("tls_config.remote_address_host", config.TLSConfig.RemoteAddressHOST, "remote host")
-	cmd.Flags().Int("tls_config.remote_address_port", config.TLSConfig.RemoteAddressPort, "remote port")
 	cmd.Flags().Bool("tls_config.remote_tls_insecure_skip_verify", config.TLSConfig.RemoteTLSInsecureSkipVerify, "Enable/Disable gateway skip verify")
 
 	// consensus flags
