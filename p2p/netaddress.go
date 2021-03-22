@@ -130,6 +130,17 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 		tls = false
 	}
 
+	listenHost := ""
+	address := strings.Split(addrWithoutProtocol, "#")
+	if len(address) == 2 {
+		listenHost = address[0]
+		addrWithoutProtocol = address[1]
+	}else if len(address) == 1 {
+		addrWithoutProtocol = address[0]
+	}else {
+		return nil, errors.New(fmt.Sprintf("unexpected address:%v", addrWithoutProtocol))
+	}
+
 	// get host and port
 	host, portStr, err := net.SplitHostPort(addrWithoutProtocol)
 	if err != nil {
@@ -139,6 +150,9 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 		return nil, ErrNetAddressInvalid{
 			addrWithoutProtocol,
 			errors.New("host is empty")}
+	}
+	if listenHost == "" {
+		listenHost = host
 	}
 
 	ip := net.ParseIP(host)
@@ -157,7 +171,7 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 
 	na := NewNetAddressIPPort(ip, uint16(port))
 	na.ID = id
-	na.Host = host
+	na.Host = listenHost
 	na.TLS = tls
 	return na, nil
 }
