@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
@@ -102,9 +101,6 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 	c.BaseService = *cmn.NewBaseService(nil, "WSClient", c)
 	for _, option := range options {
 		option(c)
-	}
-	if os.Getenv("IDG_APPID") == "" {
-		c.Dialer = nil
 	}
 	return c
 }
