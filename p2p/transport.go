@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -205,7 +206,7 @@ func (mt *MultiplexTransport) Dial(
 	}
 
 	// TODO(xla): Evaluate if we should apply filters if we explicitly dial.
-	if err := mt.filterConn(c); err != nil {
+	if err := mt.filterConn(c, addr.Host); err != nil {
 		return nil, err
 	}
 
@@ -296,9 +297,9 @@ func (mt *MultiplexTransport) acceptPeers() {
 				secretConn *conn.SecretConnection
 				netAddr    *NetAddress
 			)
-			err := mt.filterConn(c)
+			secretConn, nodeInfo, err, netAddr = mt.upgrade(c, nil)
 			if err == nil {
-				secretConn, nodeInfo, err, netAddr = mt.upgrade(c, nil)
+				err := mt.filterConn(c, netAddr.Host)
 				if err == nil {
 					addr := c.RemoteAddr()
 					id := PubKeyToID(secretConn.RemotePubKey())
@@ -323,17 +324,17 @@ func (mt *MultiplexTransport) acceptPeers() {
 // Cleanup removes the given address from the connections set and
 // closes the connection.
 func (mt *MultiplexTransport) Cleanup(p Peer) {
-	mt.conns.RemoveAddr(p.RemoteAddr())
+	mt.conns.RemoveAddr(p.SocketAddr().Host)
 	_ = p.CloseConn()
 }
 
-func (mt *MultiplexTransport) cleanup(c net.Conn) error {
-	mt.conns.Remove(c)
+func (mt *MultiplexTransport) cleanup(c net.Conn, host string) error {
+	mt.conns.Remove(host)
 
 	return c.Close()
 }
 
-func (mt *MultiplexTransport) filterConn(c net.Conn) (err error) {
+func (mt *MultiplexTransport) filterConn(c net.Conn, host string) (err error) {
 	defer func() {
 		if err != nil {
 			_ = c.Close()
@@ -341,37 +342,39 @@ func (mt *MultiplexTransport) filterConn(c net.Conn) (err error) {
 	}()
 
 	// Reject if connection is already present.
-	if mt.conns.Has(c) {
+	if mt.conns.Has(host) {
 		return ErrRejected{conn: c, isDuplicate: true}
 	}
-
 	// Resolve ips for incoming conn.
 	ips, err := resolveIPs(mt.resolver, c)
 	if err != nil {
 		return err
 	}
+	if os.Getenv("IDG_APPID") == "" {
 
-	errc := make(chan error, len(mt.connFilters))
+		errc := make(chan error, len(mt.connFilters))
 
-	for _, f := range mt.connFilters {
-		go func(f ConnFilterFunc, c net.Conn, ips []net.IP, errc chan<- error) {
-			errc <- f(mt.conns, c, ips)
-		}(f, c, ips, errc)
-	}
-
-	for i := 0; i < cap(errc); i++ {
-		select {
-		case err := <-errc:
-			if err != nil {
-				return ErrRejected{conn: c, err: err, isFiltered: true}
-			}
-		case <-time.After(mt.filterTimeout):
-			return ErrFilterTimeout{}
+		for _, f := range mt.connFilters {
+			go func(f ConnFilterFunc, c net.Conn, ips []net.IP, errc chan<- error) {
+				errc <- f(mt.conns, c, ips)
+			}(f, c, ips, errc)
 		}
 
+		for i := 0; i < cap(errc); i++ {
+			select {
+			case err := <-errc:
+				if err != nil {
+					return ErrRejected{conn: c, err: err, isFiltered: true}
+				}
+			case <-time.After(mt.filterTimeout):
+				return ErrFilterTimeout{}
+			}
+
+		}
 	}
 
-	mt.conns.Set(c, ips)
+
+	mt.conns.Set(c, ips, host)
 
 	return nil
 }
@@ -382,7 +385,7 @@ func (mt *MultiplexTransport) upgrade(
 ) (secretConn *conn.SecretConnection, nodeInfo NodeInfo, err error, remote *NetAddress) {
 	defer func() {
 		if err != nil {
-			_ = mt.cleanup(c)
+			_ = mt.cleanup(c, dialedAddr.Host)
 		}
 	}()
 

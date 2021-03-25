@@ -7,11 +7,11 @@ import (
 
 // ConnSet is a lookup table for connections and all their ips.
 type ConnSet interface {
-	Has(net.Conn) bool
+	Has(string) bool
 	HasIP(net.IP) bool
-	Set(net.Conn, []net.IP)
-	Remove(net.Conn)
-	RemoveAddr(net.Addr)
+	Set(net.Conn, []net.IP, string)
+	Remove(string)
+	RemoveAddr(string)
 }
 
 type connSetItem struct {
@@ -32,11 +32,11 @@ func NewConnSet() *connSet {
 	}
 }
 
-func (cs *connSet) Has(c net.Conn) bool {
+func (cs *connSet) Has(host string) bool {
 	cs.RLock()
 	defer cs.RUnlock()
 
-	_, ok := cs.conns[c.RemoteAddr().String()]
+	_, ok := cs.conns[host]
 
 	return ok
 }
@@ -56,25 +56,25 @@ func (cs *connSet) HasIP(ip net.IP) bool {
 	return false
 }
 
-func (cs *connSet) Remove(c net.Conn) {
+func (cs *connSet) Remove(host string) {
 	cs.Lock()
 	defer cs.Unlock()
 
-	delete(cs.conns, c.RemoteAddr().String())
+	delete(cs.conns, host)
 }
 
-func (cs *connSet) RemoveAddr(addr net.Addr) {
+func (cs *connSet) RemoveAddr(host string) {
 	cs.Lock()
 	defer cs.Unlock()
 
-	delete(cs.conns, addr.String())
+	delete(cs.conns, host)
 }
 
-func (cs *connSet) Set(c net.Conn, ips []net.IP) {
+func (cs *connSet) Set(c net.Conn, ips []net.IP, host string) {
 	cs.Lock()
 	defer cs.Unlock()
 
-	cs.conns[c.RemoteAddr().String()] = connSetItem{
+	cs.conns[host] = connSetItem{
 		conn: c,
 		ips:  ips,
 	}
