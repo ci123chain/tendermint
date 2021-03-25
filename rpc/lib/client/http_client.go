@@ -82,7 +82,6 @@ func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 			Transport: &http.Transport{
 				// Set to true to prevent GZIP-bomb DoS attacks
 				DisableCompression: true,
-				Dial:               dialer,
 			},
 		}
 	}else {
@@ -90,6 +89,7 @@ func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 			Transport: &http.Transport{
 				// Set to true to prevent GZIP-bomb DoS attacks
 				DisableCompression: true,
+				Dial:               dialer,
 			},
 		}
 	}
