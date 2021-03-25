@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -77,21 +76,12 @@ func makeHTTPDialer(remoteAddr string) (string, string, func(string, string) (ne
 // remoteAddr should be fully featured (eg. with tcp:// or unix://)
 func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 	protocol, address, dialer := makeHTTPDialer(remoteAddr)
-	if os.Getenv("IDG_APPID") == "" {
-		return protocol + "://" + address, &http.Client{
-			Transport: &http.Transport{
-				// Set to true to prevent GZIP-bomb DoS attacks
-				DisableCompression: true,
-			},
-		}
-	}else {
-		return protocol + "://" + address, &http.Client{
-			Transport: &http.Transport{
-				// Set to true to prevent GZIP-bomb DoS attacks
-				DisableCompression: true,
-				Dial:               dialer,
-			},
-		}
+	return protocol + "://" + address, &http.Client{
+		Transport: &http.Transport{
+			// Set to true to prevent GZIP-bomb DoS attacks
+			DisableCompression: true,
+			Dial:               dialer,
+		},
 	}
 }
 

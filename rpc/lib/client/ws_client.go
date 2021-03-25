@@ -103,9 +103,6 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 	for _, option := range options {
 		option(c)
 	}
-	if os.Getenv("IDG_APPID") == "" {
-		c.Dialer = nil
-	}
 	return c
 }
 
