@@ -10,6 +10,10 @@ type PubKeyMultisigThreshold struct {
 	PubKeys []crypto.PubKey `json:"pubkeys"`
 }
 
+func (pk PubKeyMultisigThreshold) Type() string {
+	return PubKeyMultisigThresholdAminoRoute
+}
+
 var _ crypto.PubKey = PubKeyMultisigThreshold{}
 
 // NewPubKeyMultisigThreshold returns a new PubKeyMultisigThreshold.
@@ -22,6 +26,38 @@ func NewPubKeyMultisigThreshold(k int, pubkeys []crypto.PubKey) crypto.PubKey {
 		panic("threshold k of n multisignature: len(pubkeys) < k")
 	}
 	return PubKeyMultisigThreshold{uint(k), pubkeys}
+}
+
+func (pk PubKeyMultisigThreshold) VerifySignature(msg []byte, marshalledSig []byte) bool {
+	var sig Multisignature
+	err := cdc.UnmarshalBinaryBare(marshalledSig, &sig)
+	if err != nil {
+		return false
+	}
+	size := sig.BitArray.Size()
+	// ensure bit array is the correct size
+	if len(pk.PubKeys) != size {
+		return false
+	}
+	// ensure size of signature list
+	if len(sig.Sigs) < int(pk.K) || len(sig.Sigs) > size {
+		return false
+	}
+	// ensure at least k signatures are set
+	if sig.BitArray.NumTrueBitsBefore(size) < int(pk.K) {
+		return false
+	}
+	// index in the list of signatures which we are concerned with.
+	sigIndex := 0
+	for i := 0; i < size; i++ {
+		if sig.BitArray.GetIndex(i) {
+			if !pk.PubKeys[i].VerifyBytes(msg, sig.Sigs[sigIndex]) {
+				return false
+			}
+			sigIndex++
+		}
+	}
+	return true
 }
 
 // VerifyBytes expects sig to be an amino encoded version of a MultiSignature.
