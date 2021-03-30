@@ -1,13 +1,13 @@
 package config
 
 import (
+	"encoding/hex"
+	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/p2p/tls"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -20,6 +20,9 @@ const (
 	LogFormatPlain = "plain"
 	// LogFormatJSON is a format for json output
 	LogFormatJSON = "json"
+
+	// DefaultLogLevel defines a default log level as INFO.
+	DefaultLogLevel = "info"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -51,11 +54,6 @@ var (
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
 )
 
-var (
-	oldPrivVal     = "priv_validator.json"
-	oldPrivValPath = filepath.Join(defaultConfigDir, oldPrivVal)
-)
-
 // Config defines the top level configuration for a Tendermint node
 type Config struct {
 	// Top level options use an anonymous struct
@@ -64,8 +62,9 @@ type Config struct {
 	// Options for services
 	RPC             *RPCConfig             `mapstructure:"rpc"`
 	P2P             *P2PConfig             `mapstructure:"p2p"`
-	TLSConfig       *tls.TLSConfig         `mapstructure:"tls_config"`
+	TLSConfig       *TLSConfig             `mapstructure:"tlsconfig"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
+	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
 	FastSync        *FastSyncConfig        `mapstructure:"fastsync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
@@ -78,8 +77,9 @@ func DefaultConfig() *Config {
 		BaseConfig:      DefaultBaseConfig(),
 		RPC:             DefaultRPCConfig(),
 		P2P:             DefaultP2PConfig(),
-		TLSConfig:       tls.DefaultTLSConfig(),
+		TLSConfig:       DefaultTLSConfig(),
 		Mempool:         DefaultMempoolConfig(),
+		StateSync:       DefaultStateSyncConfig(),
 		FastSync:        DefaultFastSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
@@ -94,6 +94,7 @@ func TestConfig() *Config {
 		RPC:             TestRPCConfig(),
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
+		StateSync:       TestStateSyncConfig(),
 		FastSync:        TestFastSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
@@ -118,31 +119,34 @@ func (cfg *Config) ValidateBasic() error {
 		return err
 	}
 	if err := cfg.RPC.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [rpc] section")
+		return fmt.Errorf("error in [rpc] section: %w", err)
 	}
 	if err := cfg.P2P.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [p2p] section")
+		return fmt.Errorf("error in [p2p] section: %w", err)
 	}
 	if err := cfg.Mempool.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [mempool] section")
+		return fmt.Errorf("error in [mempool] section: %w", err)
+	}
+	if err := cfg.StateSync.ValidateBasic(); err != nil {
+		return fmt.Errorf("error in [statesync] section: %w", err)
 	}
 	if err := cfg.FastSync.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [fastsync] section")
+		return fmt.Errorf("error in [fastsync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [consensus] section")
+		return fmt.Errorf("error in [consensus] section: %w", err)
 	}
-	return errors.Wrap(
-		cfg.Instrumentation.ValidateBasic(),
-		"Error in [instrumentation] section",
-	)
+	if err := cfg.Instrumentation.ValidateBasic(); err != nil {
+		return fmt.Errorf("error in [instrumentation] section: %w", err)
+	}
+	return nil
 }
 
 //-----------------------------------------------------------------------------
 // BaseConfig
 
 // BaseConfig defines the base configuration for a Tendermint node
-type BaseConfig struct {
+type BaseConfig struct { //nolint: maligned
 	// chainID is unexposed and immutable but here for convenience
 	chainID string
 
@@ -162,7 +166,7 @@ type BaseConfig struct {
 	// and verifying their commits
 	FastSyncMode bool `mapstructure:"fast_sync"`
 
-	// Database backend: goleveldb | cleveldb | boltdb
+	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 	//   - pure go
 	//   - stable
@@ -174,6 +178,13 @@ type BaseConfig struct {
 	//   - EXPERIMENTAL
 	//   - may be faster is some use-cases (random reads - indexer)
 	//   - use boltdb build tag (go build -tags boltdb)
+	// * rocksdb (uses github.com/tecbot/gorocksdb)
+	//   - EXPERIMENTAL
+	//   - requires gcc
+	//   - use rocksdb build tag (go build -tags rocksdb)
+	// * badgerdb (uses github.com/dgraph-io/badger)
+	//   - EXPERIMENTAL
+	//   - use badgerdb build tag (go build -tags badgerdb)
 	DBBackend string `mapstructure:"db_backend"`
 
 	// Database directory
@@ -204,9 +215,6 @@ type BaseConfig struct {
 	// Mechanism to connect to the ABCI application: socket | grpc
 	ABCI string `mapstructure:"abci"`
 
-	// TCP or UNIX socket address for the profiling server to listen on
-	ProfListenAddress string `mapstructure:"prof_laddr"`
-
 	// If true, query the ABCI app on connecting to a new peer
 	// so the app can decide if we should keep the connection or not
 	FilterPeers bool `mapstructure:"filter_peers"` // false
@@ -222,9 +230,8 @@ func DefaultBaseConfig() BaseConfig {
 		Moniker:            defaultMoniker,
 		ProxyApp:           "tcp://127.0.0.1:26658",
 		ABCI:               "socket",
-		LogLevel:           DefaultPackageLogLevels(),
+		LogLevel:           DefaultLogLevel,
 		LogFormat:          LogFormatPlain,
-		ProfListenAddress:  "",
 		FastSyncMode:       true,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
@@ -261,12 +268,6 @@ func (cfg BaseConfig) PrivValidatorStateFile() string {
 	return rootify(cfg.PrivValidatorState, cfg.RootDir)
 }
 
-// OldPrivValidatorFile returns the full path of the priv_validator.json from pre v0.28.0.
-// TODO: eventually remove.
-func (cfg BaseConfig) OldPrivValidatorFile() string {
-	return rootify(oldPrivValPath, cfg.RootDir)
-}
-
 // NodeKeyFile returns the full path to the node_key.json file
 func (cfg BaseConfig) NodeKeyFile() string {
 	return rootify(cfg.NodeKey, cfg.RootDir)
@@ -286,17 +287,6 @@ func (cfg BaseConfig) ValidateBasic() error {
 		return errors.New("unknown log_format (must be 'plain' or 'json')")
 	}
 	return nil
-}
-
-// DefaultLogLevel returns a default log level of "error"
-func DefaultLogLevel() string {
-	return "error"
-}
-
-// DefaultPackageLogLevels returns a default log level setting so all packages
-// log at "error", while the `state` and `main` packages log at "info"
-func DefaultPackageLogLevels() string {
-	return fmt.Sprintf("main:info,state:info,*:%s", DefaultLogLevel())
 }
 
 //-----------------------------------------------------------------------------
@@ -367,20 +357,25 @@ type RPCConfig struct {
 	MaxHeaderBytes int `mapstructure:"max_header_bytes"`
 
 	// The path to a file containing certificate that is used to create the HTTPS server.
-	// Migth be either absolute path or path related to tendermint's config directory.
+	// Might be either absolute path or path related to Tendermint's config directory.
 	//
 	// If the certificate is signed by a certificate authority,
 	// the certFile should be the concatenation of the server's certificate, any intermediates,
 	// and the CA's certificate.
 	//
-	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+	// Otherwise, HTTP server is run.
 	TLSCertFile string `mapstructure:"tls_cert_file"`
 
 	// The path to a file containing matching private key that is used to create the HTTPS server.
-	// Migth be either absolute path or path related to tendermint's config directory.
+	// Might be either absolute path or path related to tendermint's config directory.
 	//
-	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+	// Otherwise, HTTP server is run.
 	TLSKeyFile string `mapstructure:"tls_key_file"`
+
+	// pprof listen address (https://golang.org/pkg/net/http/pprof)
+	PprofListenAddress string `mapstructure:"pprof_laddr"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
@@ -388,7 +383,7 @@ func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
 		ListenAddress:          "tcp://127.0.0.1:26657",
 		CORSAllowedOrigins:     []string{},
-		CORSAllowedMethods:     []string{"HEAD", "GET", "POST"},
+		CORSAllowedMethods:     []string{http.MethodHead, http.MethodGet, http.MethodPost},
 		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
 		GRPCListenAddress:      "",
 		GRPCMaxOpenConnections: 900,
@@ -411,8 +406,8 @@ func DefaultRPCConfig() *RPCConfig {
 // TestRPCConfig returns a configuration for testing the RPC server
 func TestRPCConfig() *RPCConfig {
 	cfg := DefaultRPCConfig()
-	cfg.ListenAddress = "tcp://0.0.0.0:36657"
-	cfg.GRPCListenAddress = "tcp://0.0.0.0:36658"
+	cfg.ListenAddress = "tcp://127.0.0.1:36657"
+	cfg.GRPCListenAddress = "tcp://127.0.0.1:36658"
 	cfg.Unsafe = true
 	return cfg
 }
@@ -473,7 +468,7 @@ func (cfg RPCConfig) IsTLSEnabled() bool {
 // P2PConfig
 
 // P2PConfig defines the configuration options for the Tendermint peer-to-peer networking layer
-type P2PConfig struct {
+type P2PConfig struct { //nolint: maligned
 	RootDir string `mapstructure:"home"`
 
 	// Address to listen for incoming connections
@@ -504,6 +499,12 @@ type P2PConfig struct {
 
 	// Maximum number of outbound peers to connect to, excluding persistent peers
 	MaxNumOutboundPeers int `mapstructure:"max_num_outbound_peers"`
+
+	// List of node IDs, to which a connection will be (re)established ignoring any existing limits
+	UnconditionalPeerIDs string `mapstructure:"unconditional_peer_ids"`
+
+	// Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
+	PersistentPeersMaxDialPeriod time.Duration `mapstructure:"persistent_peers_max_dial_period"`
 
 	// Time to wait before flushing messages out on the connection
 	FlushThrottleTimeout time.Duration `mapstructure:"flush_throttle_timeout"`
@@ -548,32 +549,33 @@ type P2PConfig struct {
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:           "tcp://0.0.0.0:26656",
-		ExternalAddress:         "",
-		UPNP:                    false,
-		AddrBook:                defaultAddrBookPath,
-		AddrBookStrict:          true,
-		MaxNumInboundPeers:      40,
-		MaxNumOutboundPeers:     10,
-		FlushThrottleTimeout:    100 * time.Millisecond,
-		MaxPacketMsgPayloadSize: 1024,    // 1 kB
-		SendRate:                5120000, // 5 mB/s
-		RecvRate:                5120000, // 5 mB/s
-		PexReactor:              true,
-		SeedMode:                false,
-		AllowDuplicateIP:        false,
-		HandshakeTimeout:        20 * time.Second,
-		DialTimeout:             3 * time.Second,
-		TestDialFail:            false,
-		TestFuzz:                false,
-		TestFuzzConfig:          DefaultFuzzConnConfig(),
+		ListenAddress:                "tcp://0.0.0.0:26656",
+		ExternalAddress:              "",
+		UPNP:                         false,
+		AddrBook:                     defaultAddrBookPath,
+		AddrBookStrict:               true,
+		MaxNumInboundPeers:           40,
+		MaxNumOutboundPeers:          10,
+		PersistentPeersMaxDialPeriod: 0 * time.Second,
+		FlushThrottleTimeout:         100 * time.Millisecond,
+		MaxPacketMsgPayloadSize:      1024,    // 1 kB
+		SendRate:                     5120000, // 5 mB/s
+		RecvRate:                     5120000, // 5 mB/s
+		PexReactor:                   true,
+		SeedMode:                     false,
+		AllowDuplicateIP:             false,
+		HandshakeTimeout:             20 * time.Second,
+		DialTimeout:                  3 * time.Second,
+		TestDialFail:                 false,
+		TestFuzz:                     false,
+		TestFuzzConfig:               DefaultFuzzConnConfig(),
 	}
 }
 
 // TestP2PConfig returns a configuration for testing the peer-to-peer layer
 func TestP2PConfig() *P2PConfig {
 	cfg := DefaultP2PConfig()
-	cfg.ListenAddress = "tcp://0.0.0.0:36656"
+	cfg.ListenAddress = "tcp://127.0.0.1:36656"
 	cfg.FlushThrottleTimeout = 10 * time.Millisecond
 	cfg.AllowDuplicateIP = true
 	return cfg
@@ -595,6 +597,9 @@ func (cfg *P2PConfig) ValidateBasic() error {
 	}
 	if cfg.FlushThrottleTimeout < 0 {
 		return errors.New("flush_throttle_timeout can't be negative")
+	}
+	if cfg.PersistentPeersMaxDialPeriod < 0 {
+		return errors.New("persistent_peers_max_dial_period can't be negative")
 	}
 	if cfg.MaxPacketMsgPayloadSize < 0 {
 		return errors.New("max_packet_msg_payload_size can't be negative")
@@ -633,14 +638,29 @@ func DefaultFuzzConnConfig() *FuzzConnConfig {
 
 // MempoolConfig defines the configuration options for the Tendermint mempool
 type MempoolConfig struct {
-	RootDir     string `mapstructure:"home"`
-	Recheck     bool   `mapstructure:"recheck"`
-	Broadcast   bool   `mapstructure:"broadcast"`
-	WalPath     string `mapstructure:"wal_dir"`
-	Size        int    `mapstructure:"size"`
-	MaxTxsBytes int64  `mapstructure:"max_txs_bytes"`
-	CacheSize   int    `mapstructure:"cache_size"`
-	MaxTxBytes  int    `mapstructure:"max_tx_bytes"`
+	RootDir   string `mapstructure:"home"`
+	Recheck   bool   `mapstructure:"recheck"`
+	Broadcast bool   `mapstructure:"broadcast"`
+	WalPath   string `mapstructure:"wal_dir"`
+	// Maximum number of transactions in the mempool
+	Size int `mapstructure:"size"`
+	// Limit the total size of all txs in the mempool.
+	// This only accounts for raw transactions (e.g. given 1MB transactions and
+	// max_txs_bytes=5MB, mempool will only accept 5 transactions).
+	MaxTxsBytes int64 `mapstructure:"max_txs_bytes"`
+	// Size of the cache (used to filter transactions we saw earlier) in transactions
+	CacheSize int `mapstructure:"cache_size"`
+	// Do not remove invalid transactions from the cache (default: false)
+	// Set to true if it's not possible for any invalid transaction to become
+	// valid again in the future.
+	KeepInvalidTxsInCache bool `mapstructure:"keep-invalid-txs-in-cache"`
+	// Maximum size of a single transaction
+	// NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
+	MaxTxBytes int `mapstructure:"max_tx_bytes"`
+	// Maximum size of a batch of transactions to send to a peer
+	// Including space needed by encoding (one varint per transaction).
+	// XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
+	MaxBatchBytes int `mapstructure:"max_batch_bytes"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -694,6 +714,73 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 }
 
 //-----------------------------------------------------------------------------
+// StateSyncConfig
+
+// StateSyncConfig defines the configuration for the Tendermint state sync service
+type StateSyncConfig struct {
+	Enable        bool          `mapstructure:"enable"`
+	TempDir       string        `mapstructure:"temp_dir"`
+	RPCServers    []string      `mapstructure:"rpc_servers"`
+	TrustPeriod   time.Duration `mapstructure:"trust_period"`
+	TrustHeight   int64         `mapstructure:"trust_height"`
+	TrustHash     string        `mapstructure:"trust_hash"`
+	DiscoveryTime time.Duration `mapstructure:"discovery_time"`
+}
+
+func (cfg *StateSyncConfig) TrustHashBytes() []byte {
+	// validated in ValidateBasic, so we can safely panic here
+	bytes, err := hex.DecodeString(cfg.TrustHash)
+	if err != nil {
+		panic(err)
+	}
+	return bytes
+}
+
+// DefaultStateSyncConfig returns a default configuration for the state sync service
+func DefaultStateSyncConfig() *StateSyncConfig {
+	return &StateSyncConfig{
+		TrustPeriod:   168 * time.Hour,
+		DiscoveryTime: 15 * time.Second,
+	}
+}
+
+// TestFastSyncConfig returns a default configuration for the state sync service
+func TestStateSyncConfig() *StateSyncConfig {
+	return DefaultStateSyncConfig()
+}
+
+// ValidateBasic performs basic validation.
+func (cfg *StateSyncConfig) ValidateBasic() error {
+	if cfg.Enable {
+		if len(cfg.RPCServers) == 0 {
+			return errors.New("rpc_servers is required")
+		}
+		if len(cfg.RPCServers) < 2 {
+			return errors.New("at least two rpc_servers entries is required")
+		}
+		for _, server := range cfg.RPCServers {
+			if len(server) == 0 {
+				return errors.New("found empty rpc_servers entry")
+			}
+		}
+		if cfg.TrustPeriod <= 0 {
+			return errors.New("trusted_period is required")
+		}
+		if cfg.TrustHeight <= 0 {
+			return errors.New("trusted_height is required")
+		}
+		if len(cfg.TrustHash) == 0 {
+			return errors.New("trusted_hash is required")
+		}
+		_, err := hex.DecodeString(cfg.TrustHash)
+		if err != nil {
+			return fmt.Errorf("invalid trusted_hash: %w", err)
+		}
+	}
+	return nil
+}
+
+//-----------------------------------------------------------------------------
 // FastSyncConfig
 
 // FastSyncConfig defines the configuration for the Tendermint fast sync service
@@ -720,6 +807,8 @@ func (cfg *FastSyncConfig) ValidateBasic() error {
 		return nil
 	case "v1":
 		return nil
+	case "v2":
+		return nil
 	default:
 		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
 	}
@@ -735,13 +824,23 @@ type ConsensusConfig struct {
 	WalPath string `mapstructure:"wal_file"`
 	walFile string // overrides WalPath if set
 
-	TimeoutPropose        time.Duration `mapstructure:"timeout_propose"`
-	TimeoutProposeDelta   time.Duration `mapstructure:"timeout_propose_delta"`
-	TimeoutPrevote        time.Duration `mapstructure:"timeout_prevote"`
-	TimeoutPrevoteDelta   time.Duration `mapstructure:"timeout_prevote_delta"`
-	TimeoutPrecommit      time.Duration `mapstructure:"timeout_precommit"`
+	// How long we wait for a proposal block before prevoting nil
+	TimeoutPropose time.Duration `mapstructure:"timeout_propose"`
+	// How much timeout_propose increases with each round
+	TimeoutProposeDelta time.Duration `mapstructure:"timeout_propose_delta"`
+	// How long we wait after receiving +2/3 prevotes for “anything” (ie. not a single block or nil)
+	TimeoutPrevote time.Duration `mapstructure:"timeout_prevote"`
+	// How much the timeout_prevote increases with each round
+	TimeoutPrevoteDelta time.Duration `mapstructure:"timeout_prevote_delta"`
+	// How long we wait after receiving +2/3 precommits for “anything” (ie. not a single block or nil)
+	TimeoutPrecommit time.Duration `mapstructure:"timeout_precommit"`
+	// How much the timeout_precommit increases with each round
 	TimeoutPrecommitDelta time.Duration `mapstructure:"timeout_precommit_delta"`
-	TimeoutCommit         time.Duration `mapstructure:"timeout_commit"`
+	// How long we wait after committing a block, before starting on the new
+	// height (this gives us a chance to receive some more precommits, even
+	// though we already have +2/3).
+	// NOTE: when modifying, make sure to update time_iota_ms genesis parameter
+	TimeoutCommit time.Duration `mapstructure:"timeout_commit"`
 
 	// Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 	SkipTimeoutCommit bool `mapstructure:"skip_timeout_commit"`
@@ -753,6 +852,8 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters
 	PeerGossipSleepDuration     time.Duration `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer_query_maj23_sleep_duration"`
+
+	DoubleSignCheckHeight int64 `mapstructure:"double_sign_check_height"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -771,6 +872,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		CreateEmptyBlocksInterval:   0 * time.Second,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
+		DoubleSignCheckHeight:       int64(0),
 	}
 }
 
@@ -783,10 +885,12 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.TimeoutPrevoteDelta = 1 * time.Millisecond
 	cfg.TimeoutPrecommit = 10 * time.Millisecond
 	cfg.TimeoutPrecommitDelta = 1 * time.Millisecond
+	// NOTE: when modifying, make sure to update time_iota_ms (testGenesisFmt) in toml.go
 	cfg.TimeoutCommit = 10 * time.Millisecond
 	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5 * time.Millisecond
 	cfg.PeerQueryMaj23SleepDuration = 250 * time.Millisecond
+	cfg.DoubleSignCheckHeight = int64(0)
 	return cfg
 }
 
@@ -796,27 +900,28 @@ func (cfg *ConsensusConfig) WaitForTxs() bool {
 }
 
 // Propose returns the amount of time to wait for a proposal
-func (cfg *ConsensusConfig) Propose(round int) time.Duration {
+func (cfg *ConsensusConfig) Propose(round int32) time.Duration {
 	return time.Duration(
 		cfg.TimeoutPropose.Nanoseconds()+cfg.TimeoutProposeDelta.Nanoseconds()*int64(round),
 	) * time.Nanosecond
 }
 
 // Prevote returns the amount of time to wait for straggler votes after receiving any +2/3 prevotes
-func (cfg *ConsensusConfig) Prevote(round int) time.Duration {
+func (cfg *ConsensusConfig) Prevote(round int32) time.Duration {
 	return time.Duration(
 		cfg.TimeoutPrevote.Nanoseconds()+cfg.TimeoutPrevoteDelta.Nanoseconds()*int64(round),
 	) * time.Nanosecond
 }
 
 // Precommit returns the amount of time to wait for straggler votes after receiving any +2/3 precommits
-func (cfg *ConsensusConfig) Precommit(round int) time.Duration {
+func (cfg *ConsensusConfig) Precommit(round int32) time.Duration {
 	return time.Duration(
 		cfg.TimeoutPrecommit.Nanoseconds()+cfg.TimeoutPrecommitDelta.Nanoseconds()*int64(round),
 	) * time.Nanosecond
 }
 
-// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits for a single block (ie. a commit).
+// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits
+// for a single block (ie. a commit).
 func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
 	return t.Add(cfg.TimeoutCommit)
 }
@@ -867,46 +972,37 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	if cfg.PeerQueryMaj23SleepDuration < 0 {
 		return errors.New("peer_query_maj23_sleep_duration can't be negative")
 	}
+	if cfg.DoubleSignCheckHeight < 0 {
+		return errors.New("double_sign_check_height can't be negative")
+	}
 	return nil
 }
 
 //-----------------------------------------------------------------------------
 // TxIndexConfig
-
+// Remember that Event has the following structure:
+// type: [
+//  key: value,
+//  ...
+// ]
+//
+// CompositeKeys are constructed by `type.key`
 // TxIndexConfig defines the configuration for the transaction indexer,
-// including tags to index.
+// including composite keys to index.
 type TxIndexConfig struct {
 	// What indexer to use for transactions
 	//
 	// Options:
 	//   1) "null"
-	//   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+	//   2) "kv" (default) - the simplest possible indexer,
+	//      backed by key-value storage (defaults to levelDB; see DBBackend).
 	Indexer string `mapstructure:"indexer"`
-
-	// Comma-separated list of tags to index (by default the only tag is "tx.hash")
-	//
-	// You can also index transactions by height by adding "tx.height" tag here.
-	//
-	// It's recommended to index only a subset of tags due to possible memory
-	// bloat. This is, of course, depends on the indexer's DB and the volume of
-	// transactions.
-	IndexTags string `mapstructure:"index_tags"`
-
-	// When set to true, tells indexer to index all tags (predefined tags:
-	// "tx.hash", "tx.height" and all tags from DeliverTx responses).
-	//
-	// Note this may be not desirable (see the comment above). IndexTags has a
-	// precedence over IndexAllTags (i.e. when given both, IndexTags will be
-	// indexed).
-	IndexAllTags bool `mapstructure:"index_all_tags"`
 }
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.
 func DefaultTxIndexConfig() *TxIndexConfig {
 	return &TxIndexConfig{
-		Indexer:      "kv",
-		IndexTags:    "",
-		IndexAllTags: false,
+		Indexer: "kv",
 	}
 }
 
@@ -988,4 +1084,21 @@ func getDefaultMoniker() string {
 		moniker = "anonymous"
 	}
 	return moniker
+}
+
+
+type TLSConfig struct {
+	RemoteTLSCertURI            string `mapstructure:"remote_tls_cert"`
+	RemoteTLSCertKeyURI         string `mapstructure:"remote_tls_cert_key"`
+	RemoteTLSDialTimeout        int    `mapstructure:"remote_tls_dial_timeout"`
+	RemoteTLSInsecureSkipVerify bool   `mapstructure:"remote_tls_insecure_skip_verify"` ///true means close verify.
+}
+
+func DefaultTLSConfig() *TLSConfig {
+	return &TLSConfig{
+		RemoteTLSCertURI:            "",
+		RemoteTLSCertKeyURI:         "",
+		RemoteTLSDialTimeout:        5,
+		RemoteTLSInsecureSkipVerify: true,
+	}
 }

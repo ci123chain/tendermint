@@ -2,16 +2,17 @@ package p2p
 
 import (
 	"net"
-	"sync"
+
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 // ConnSet is a lookup table for connections and all their ips.
 type ConnSet interface {
-	Has(string) bool
+	Has(net.Conn) bool
 	HasIP(net.IP) bool
-	Set(net.Conn, []net.IP, string)
-	Remove(string)
-	RemoveAddr(string)
+	Set(net.Conn, []net.IP)
+	Remove(net.Conn)
+	RemoveAddr(net.Addr)
 }
 
 type connSetItem struct {
@@ -20,23 +21,23 @@ type connSetItem struct {
 }
 
 type connSet struct {
-	sync.RWMutex
+	tmsync.RWMutex
 
 	conns map[string]connSetItem
 }
 
 // NewConnSet returns a ConnSet implementation.
-func NewConnSet() *connSet {
+func NewConnSet() ConnSet {
 	return &connSet{
 		conns: map[string]connSetItem{},
 	}
 }
 
-func (cs *connSet) Has(host string) bool {
+func (cs *connSet) Has(c net.Conn) bool {
 	cs.RLock()
 	defer cs.RUnlock()
 
-	_, ok := cs.conns[host]
+	_, ok := cs.conns[c.RemoteAddr().String()]
 
 	return ok
 }
@@ -56,25 +57,25 @@ func (cs *connSet) HasIP(ip net.IP) bool {
 	return false
 }
 
-func (cs *connSet) Remove(host string) {
+func (cs *connSet) Remove(c net.Conn) {
 	cs.Lock()
 	defer cs.Unlock()
 
-	delete(cs.conns, host)
+	delete(cs.conns, c.RemoteAddr().String())
 }
 
-func (cs *connSet) RemoveAddr(host string) {
+func (cs *connSet) RemoveAddr(addr net.Addr) {
 	cs.Lock()
 	defer cs.Unlock()
 
-	delete(cs.conns, host)
+	delete(cs.conns, addr.String())
 }
 
-func (cs *connSet) Set(c net.Conn, ips []net.IP, host string) {
+func (cs *connSet) Set(c net.Conn, ips []net.IP) {
 	cs.Lock()
 	defer cs.Unlock()
 
-	cs.conns[host] = connSetItem{
+	cs.conns[c.RemoteAddr().String()] = connSetItem{
 		conn: c,
 		ips:  ips,
 	}

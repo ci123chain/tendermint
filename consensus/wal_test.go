@@ -11,14 +11,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -45,7 +46,9 @@ func TestWALTruncate(t *testing.T) {
 	err = wal.Start()
 	require.NoError(t, err)
 	defer func() {
-		wal.Stop()
+		if err := wal.Stop(); err != nil {
+			t.Error(err)
+		}
 		// wait for the wal to finish shutting down so we
 		// can safely remove the directory
 		wal.Wait()
@@ -57,9 +60,11 @@ func TestWALTruncate(t *testing.T) {
 	err = WALGenerateNBlocks(t, wal.Group(), 60)
 	require.NoError(t, err)
 
-	time.Sleep(1 * time.Millisecond) //wait groupCheckDuration, make sure RotateFile run
+	time.Sleep(1 * time.Millisecond) // wait groupCheckDuration, make sure RotateFile run
 
-	wal.FlushAndSync()
+	if err := wal.FlushAndSync(); err != nil {
+		t.Error(err)
+	}
 
 	h := int64(50)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
@@ -81,11 +86,14 @@ func TestWALEncoderDecoder(t *testing.T) {
 	msgs := []TimedWALMessage{
 		{Time: now, Msg: EndHeightMessage{0}},
 		{Time: now, Msg: timeoutInfo{Duration: time.Second, Height: 1, Round: 1, Step: types.RoundStepPropose}},
+		{Time: now, Msg: tmtypes.EventDataRoundState{Height: 1, Round: 1, Step: ""}},
 	}
 
 	b := new(bytes.Buffer)
 
 	for _, msg := range msgs {
+		msg := msg
+
 		b.Reset()
 
 		enc := NewWALEncoder(b)
@@ -95,13 +103,12 @@ func TestWALEncoderDecoder(t *testing.T) {
 		dec := NewWALDecoder(b)
 		decoded, err := dec.Decode()
 		require.NoError(t, err)
-
 		assert.Equal(t, msg.Time.UTC(), decoded.Time)
 		assert.Equal(t, msg.Msg, decoded.Msg)
 	}
 }
 
-func TestWALWritePanicsIfMsgIsTooBig(t *testing.T) {
+func TestWALWrite(t *testing.T) {
 	walDir, err := ioutil.TempDir("", "wal")
 	require.NoError(t, err)
 	defer os.RemoveAll(walDir)
@@ -112,13 +119,35 @@ func TestWALWritePanicsIfMsgIsTooBig(t *testing.T) {
 	err = wal.Start()
 	require.NoError(t, err)
 	defer func() {
-		wal.Stop()
+		if err := wal.Stop(); err != nil {
+			t.Error(err)
+		}
 		// wait for the wal to finish shutting down so we
 		// can safely remove the directory
 		wal.Wait()
 	}()
 
-	assert.Panics(t, func() { wal.Write(make([]byte, maxMsgSizeBytes+1)) })
+	// 1) Write returns an error if msg is too big
+	msg := &BlockPartMessage{
+		Height: 1,
+		Round:  1,
+		Part: &tmtypes.Part{
+			Index: 1,
+			Bytes: make([]byte, 1),
+			Proof: merkle.Proof{
+				Total:    1,
+				Index:    1,
+				LeafHash: make([]byte, maxMsgSizeBytes-30),
+			},
+		},
+	}
+
+	err = wal.Write(msgInfo{
+		Msg: msg,
+	})
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "msg is too big")
+	}
 }
 
 func TestWALSearchForEndHeight(t *testing.T) {
@@ -168,7 +197,9 @@ func TestWALPeriodicSync(t *testing.T) {
 
 	require.NoError(t, wal.Start())
 	defer func() {
-		wal.Stop()
+		if err := wal.Stop(); err != nil {
+			t.Error(err)
+		}
 		wal.Wait()
 	}()
 
@@ -213,7 +244,9 @@ func benchmarkWalDecode(b *testing.B, n int) {
 	enc := NewWALEncoder(buf)
 
 	data := nBytes(n)
-	enc.Encode(&TimedWALMessage{Msg: data, Time: time.Now().Round(time.Second).UTC()})
+	if err := enc.Encode(&TimedWALMessage{Msg: data, Time: time.Now().Round(time.Second).UTC()}); err != nil {
+		b.Error(err)
+	}
 
 	encoded := buf.Bytes()
 

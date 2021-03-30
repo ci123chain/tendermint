@@ -36,15 +36,14 @@ func TestPubKeySecp256k1Address(t *testing.T) {
 		addrBbz, _, _ := base58.CheckDecode(d.addr)
 		addrB := crypto.Address(addrBbz)
 
-		var priv secp256k1.PrivKeySecp256k1
-		copy(priv[:], privB)
+		var priv secp256k1.PrivKey = secp256k1.PrivKey(privB)
 
 		pubKey := priv.PubKey()
-		pubT, _ := pubKey.(secp256k1.PubKeySecp256k1)
-		pub := pubT[:]
+		pubT, _ := pubKey.(secp256k1.PubKey)
+		pub := pubT
 		addr := pubKey.Address()
 
-		assert.Equal(t, pub, pubB, "Expected pub keys to match")
+		assert.Equal(t, pub, secp256k1.PubKey(pubB), "Expected pub keys to match")
 		assert.Equal(t, addr, addrB, "Expected addresses to match")
 	}
 }
@@ -57,12 +56,12 @@ func TestSignAndValidateSecp256k1(t *testing.T) {
 	sig, err := privKey.Sign(msg)
 	require.Nil(t, err)
 
-	assert.True(t, pubKey.VerifyBytes(msg, sig))
+	assert.True(t, pubKey.VerifySignature(msg, sig))
 
 	// Mutate the signature, just one bit.
 	sig[3] ^= byte(0x01)
 
-	assert.False(t, pubKey.VerifyBytes(msg, sig))
+	assert.False(t, pubKey.VerifySignature(msg, sig))
 }
 
 // This test is intended to justify the removal of calls to the underlying library
@@ -94,12 +93,17 @@ func TestGenPrivKeySecp256k1(t *testing.T) {
 		secret []byte
 	}{
 		{"empty secret", []byte{}},
-		{"some long secret", []byte("We live in a society exquisitely dependent on science and technology, in which hardly anyone knows anything about science and technology.")},
+		{
+			"some long secret",
+			[]byte("We live in a society exquisitely dependent on science and technology, " +
+				"in which hardly anyone knows anything about science and technology."),
+		},
 		{"another seed used in cosmos tests #1", []byte{0}},
 		{"another seed used in cosmos tests #2", []byte("mySecret")},
 		{"another seed used in cosmos tests #3", []byte("")},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			gotPrivKey := secp256k1.GenPrivKeySecp256k1(tt.secret)
 			require.NotNil(t, gotPrivKey)

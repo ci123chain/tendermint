@@ -11,18 +11,19 @@ func envSet() int {
 
 	if callIndexToFailS == "" {
 		return -1
-	} else {
-		var err error
-		callIndexToFail, err := strconv.Atoi(callIndexToFailS)
-		if err != nil {
-			return -1
-		}
-		return callIndexToFail
 	}
+
+	var err error
+	callIndexToFail, err := strconv.Atoi(callIndexToFailS)
+	if err != nil {
+		return -1
+	}
+
+	return callIndexToFail
 }
 
 // Fail when FAIL_TEST_INDEX == callIndex
-var callIndex int //indexes Fail calls
+var callIndex int // indexes Fail calls
 
 func Fail() {
 	callIndexToFail := envSet()
@@ -34,7 +35,7 @@ func Fail() {
 		Exit()
 	}
 
-	callIndex += 1
+	callIndex++
 }
 
 func Exit() {

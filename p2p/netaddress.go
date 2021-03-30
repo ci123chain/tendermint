@@ -7,36 +7,36 @@ package p2p
 import (
 	"crypto/tls"
 	"encoding/hex"
+	"errors"
 	"flag"
 	"fmt"
-	"github.com/tendermint/tendermint/config"
 	log2 "github.com/tendermint/tendermint/libs/log"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
+	tmc "github.com/tendermint/tendermint/config"
+	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
+// EmptyNetAddress defines the string representation of an empty NetAddress
+const (
+	EmptyNetAddress = "<nil-NetAddress>"
+)
 
 var (
-	Config *config.Config
+	Config *tmc.Config
 	loger log2.Logger
-	//node_store *NodeStore
 )
 
-func SetP2PConfig(conf *config.Config) {
+func SetP2PConfig(conf *tmc.Config) {
 	Config = conf
 }
 
 func SetLogger(logger log2.Logger) {
 	loger = logger
 }
-
-//func SetStore(s *NodeStore) {
-//	node_store = s
-//}
 
 // NetAddress defines information about a peer on the network
 // including its ID, IP address, and port.
@@ -47,12 +47,6 @@ type NetAddress struct {
 
 	Host  string  `json:"host"`
 	TLS   bool    `json:"tls"`
-
-	// TODO:
-	// Name string `json:"name"` // optional DNS name
-
-	// memoize .String()
-	str string
 }
 
 // IDAddressString returns id@hostPort. It strips the leading
@@ -73,7 +67,7 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 		if flag.Lookup("test.v") == nil { // normal run
 			panic(fmt.Sprintf("Only TCPAddrs are supported. Got: %v", addr))
 		} else { // in testing
-			netAddr := NewNetAddressIPPort(net.IP("0.0.0.0"), 0)
+			netAddr := NewNetAddressIPPort(net.IP("127.0.0.1"), 0)
 			netAddr.ID = id
 			return netAddr
 		}
@@ -87,23 +81,11 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 	port := uint16(tcpAddr.Port)
 	na := NewNetAddressIPPort(ip, port)
 	na.ID = id
-	//host := ""
-	//na.Host = host
 	return na
 }
 
-/////http request.
-/////get server_name of ip.
-//func queryServerName(ip net.IP) string {
-//	if Config.P2P.TLSOption {
-//		return node_store.Get(ip.String())
-//	}else {
-//		return ip.String()
-//	}
-//}
-
 // NewNetAddressString returns a new NetAddress using the provided address in
-// the form of "ID@IP:Port@TLS".
+// the form of "ID@domain#IP:Port@TLS".
 // Also resolves the host if host is not an IP.
 // Errors are of type ErrNetAddressXxx where Xxx is in (NoID, Invalid, Lookup)
 func NewNetAddressString(addr string) (*NetAddress, error) {
@@ -118,16 +100,16 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
 	}
 	var id ID
-	var tls bool
+	var isTls bool
 	id, addrWithoutProtocol = ID(spl[0]), spl[1]
 	if len(spl) == 3 {
 		if spl[2] != "tls" {
 			return nil, ErrNetAddressInvalid{addr, errors.New("invalid tls option, should be '@tls'")}
 		}else {
-			tls = true
+			isTls = true
 		}
 	}else {
-		tls = false
+		isTls = false
 	}
 
 	listenHost := ""
@@ -172,7 +154,7 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 	na := NewNetAddressIPPort(ip, uint16(port))
 	na.ID = id
 	na.Host = listenHost
-	na.TLS = tls
+	na.TLS = isTls
 	return na, nil
 }
 
@@ -201,6 +183,59 @@ func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 	}
 }
 
+// NetAddressFromProto converts a Protobuf NetAddress into a native struct.
+func NetAddressFromProto(pb tmp2p.NetAddress) (*NetAddress, error) {
+	ip := net.ParseIP(pb.IP)
+	if ip == nil {
+		return nil, fmt.Errorf("invalid IP address %v", pb.IP)
+	}
+	if pb.Port >= 1<<16 {
+		return nil, fmt.Errorf("invalid port number %v", pb.Port)
+	}
+	return &NetAddress{
+		ID:   ID(pb.ID),
+		IP:   ip,
+		Port: uint16(pb.Port),
+		Host: pb.Host,
+		TLS:  pb.Tls,
+	}, nil
+}
+
+// NetAddressesFromProto converts a slice of Protobuf NetAddresses into a native slice.
+func NetAddressesFromProto(pbs []tmp2p.NetAddress) ([]*NetAddress, error) {
+	nas := make([]*NetAddress, 0, len(pbs))
+	for _, pb := range pbs {
+		na, err := NetAddressFromProto(pb)
+		if err != nil {
+			return nil, err
+		}
+		nas = append(nas, na)
+	}
+	return nas, nil
+}
+
+// NetAddressesToProto converts a slice of NetAddresses into a Protobuf slice.
+func NetAddressesToProto(nas []*NetAddress) []tmp2p.NetAddress {
+	pbs := make([]tmp2p.NetAddress, 0, len(nas))
+	for _, na := range nas {
+		if na != nil {
+			pbs = append(pbs, na.ToProto())
+		}
+	}
+	return pbs
+}
+
+// ToProto converts a NetAddress to Protobuf.
+func (na *NetAddress) ToProto() tmp2p.NetAddress {
+	return tmp2p.NetAddress{
+		ID:   string(na.ID),
+		IP:   na.IP.String(),
+		Port: uint32(na.Port),
+		Host: na.Host,
+		Tls:  na.TLS,
+	}
+}
+
 // Equals reports whether na and other are the same addresses,
 // including their ID, IP, and Port.
 func (na *NetAddress) Equals(other interface{}) bool {
@@ -226,16 +261,15 @@ func (na *NetAddress) Same(other interface{}) bool {
 // String representation: <ID>@<IP>:<PORT>
 func (na *NetAddress) String() string {
 	if na == nil {
-		return "<nil-NetAddress>"
+		return EmptyNetAddress
 	}
-	if na.str == "" {
-		addrStr := na.DialString()
-		if na.ID != "" {
-			addrStr = IDAddressString(na.ID, addrStr)
-		}
-		na.str = addrStr
+
+	addrStr := na.DialString()
+	if na.ID != "" {
+		addrStr = IDAddressString(na.ID, addrStr)
 	}
-	return na.str
+
+	return addrStr
 }
 
 func (na *NetAddress) DialString() string {
@@ -256,16 +290,6 @@ func (na *NetAddress) Dial() (net.Conn, error) {
 	}
 	return conn, nil
 }
-
-// DialTimeout calls net.DialTimeout on the address.
-func (na *NetAddress) DialTimeout2(timeout time.Duration) (net.Conn, error) {
-	conn, err := net.DialTimeout("tcp", na.DialString(), timeout)
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
-}
-
 
 func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
 
@@ -296,6 +320,16 @@ func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
 	}
 }
 
+
+// DialTimeout calls net.DialTimeout on the address.
+func (na *NetAddress) DialTimeout2(timeout time.Duration) (net.Conn, error) {
+	conn, err := net.DialTimeout("tcp", na.DialString(), timeout)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
 // Routable returns true if the address is routable.
 func (na *NetAddress) Routable() bool {
 	if err := na.Valid(); err != nil {
@@ -310,7 +344,7 @@ func (na *NetAddress) Routable() bool {
 // address or one that matches the RFC3849 documentation address format.
 func (na *NetAddress) Valid() error {
 	if err := validateID(na.ID); err != nil {
-		return errors.Wrap(err, "invalid ID")
+		return fmt.Errorf("invalid ID: %w", err)
 	}
 
 	if na.IP == nil {
@@ -339,9 +373,9 @@ func (na *NetAddress) ReachabilityTo(o *NetAddress) int {
 		Unreachable = 0
 		Default     = iota
 		Teredo
-		Ipv6_weak
+		Ipv6Weak
 		Ipv4
-		Ipv6_strong
+		Ipv6Strong
 	)
 	switch {
 	case !na.Routable():
@@ -355,7 +389,7 @@ func (na *NetAddress) ReachabilityTo(o *NetAddress) int {
 		case o.IP.To4() != nil:
 			return Ipv4
 		default: // ipv6
-			return Ipv6_weak
+			return Ipv6Weak
 		}
 	case na.IP.To4() != nil:
 		if o.Routable() && o.IP.To4() != nil {
@@ -377,9 +411,9 @@ func (na *NetAddress) ReachabilityTo(o *NetAddress) int {
 			return Ipv4
 		case tunnelled:
 			// only prioritise ipv6 if we aren't tunnelling it.
-			return Ipv6_weak
+			return Ipv6Weak
 		}
-		return Ipv6_strong
+		return Ipv6Strong
 	}
 }
 
@@ -406,21 +440,43 @@ var rfc4862 = net.IPNet{IP: net.ParseIP("FE80::"), Mask: net.CIDRMask(64, 128)}
 var rfc6052 = net.IPNet{IP: net.ParseIP("64:FF9B::"), Mask: net.CIDRMask(96, 128)}
 var rfc6145 = net.IPNet{IP: net.ParseIP("::FFFF:0:0:0"), Mask: net.CIDRMask(96, 128)}
 var zero4 = net.IPNet{IP: net.ParseIP("0.0.0.0"), Mask: net.CIDRMask(8, 32)}
+var (
+	// onionCatNet defines the IPv6 address block used to support Tor.
+	// bitcoind encodes a .onion address as a 16 byte number by decoding the
+	// address prior to the .onion (i.e. the key hash) base32 into a ten
+	// byte number. It then stores the first 6 bytes of the address as
+	// 0xfd, 0x87, 0xd8, 0x7e, 0xeb, 0x43.
+	//
+	// This is the same range used by OnionCat, which is part part of the
+	// RFC4193 unique local IPv6 range.
+	//
+	// In summary the format is:
+	// { magic 6 bytes, 10 bytes base32 decode of key hash }
+	onionCatNet = ipNet("fd87:d87e:eb43::", 48, 128)
+)
+
+// ipNet returns a net.IPNet struct given the passed IP address string, number
+// of one bits to include at the start of the mask, and the total number of bits
+// for the mask.
+func ipNet(ip string, ones, bits int) net.IPNet {
+	return net.IPNet{IP: net.ParseIP(ip), Mask: net.CIDRMask(ones, bits)}
+}
 
 func (na *NetAddress) RFC1918() bool {
 	return rfc1918_10.Contains(na.IP) ||
 		rfc1918_192.Contains(na.IP) ||
 		rfc1918_172.Contains(na.IP)
 }
-func (na *NetAddress) RFC3849() bool { return rfc3849.Contains(na.IP) }
-func (na *NetAddress) RFC3927() bool { return rfc3927.Contains(na.IP) }
-func (na *NetAddress) RFC3964() bool { return rfc3964.Contains(na.IP) }
-func (na *NetAddress) RFC4193() bool { return rfc4193.Contains(na.IP) }
-func (na *NetAddress) RFC4380() bool { return rfc4380.Contains(na.IP) }
-func (na *NetAddress) RFC4843() bool { return rfc4843.Contains(na.IP) }
-func (na *NetAddress) RFC4862() bool { return rfc4862.Contains(na.IP) }
-func (na *NetAddress) RFC6052() bool { return rfc6052.Contains(na.IP) }
-func (na *NetAddress) RFC6145() bool { return rfc6145.Contains(na.IP) }
+func (na *NetAddress) RFC3849() bool     { return rfc3849.Contains(na.IP) }
+func (na *NetAddress) RFC3927() bool     { return rfc3927.Contains(na.IP) }
+func (na *NetAddress) RFC3964() bool     { return rfc3964.Contains(na.IP) }
+func (na *NetAddress) RFC4193() bool     { return rfc4193.Contains(na.IP) }
+func (na *NetAddress) RFC4380() bool     { return rfc4380.Contains(na.IP) }
+func (na *NetAddress) RFC4843() bool     { return rfc4843.Contains(na.IP) }
+func (na *NetAddress) RFC4862() bool     { return rfc4862.Contains(na.IP) }
+func (na *NetAddress) RFC6052() bool     { return rfc6052.Contains(na.IP) }
+func (na *NetAddress) RFC6145() bool     { return rfc6145.Contains(na.IP) }
+func (na *NetAddress) OnionCatTor() bool { return onionCatNet.Contains(na.IP) }
 
 func removeProtocolIfDefined(addr string) string {
 	if strings.Contains(addr, "://") {
