@@ -38,6 +38,10 @@ func SetEnvironment(e *Environment) {
 	env = e
 }
 
+func SetLogger(l log.Logger) {
+	env.Logger = l
+}
+
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
 

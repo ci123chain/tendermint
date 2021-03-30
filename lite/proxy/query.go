@@ -1,7 +1,10 @@
 package proxy
 
 import (
+	"context"
 	"fmt"
+	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -19,16 +22,16 @@ import (
 // a valid proof, as defined by the Verifier.
 //
 // If there is any error in checking, returns an error.
-func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rpcclient.Client,
+func GetWithProof(ctx context.Context, prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rpcclient.Client,
 	cert lite.Verifier) (
-	val cmn.HexBytes, height int64, proof *merkle.Proof, err error) {
+	val bytes.HexBytes, height int64, proof *crypto.ProofOps, err error) {
 
 	if reqHeight < 0 {
 		err = cmn.NewError("Height cannot be negative")
 		return
 	}
 
-	res, err := GetWithProofOptions(prt, "/key", key,
+	res, err := GetWithProofOptions(ctx, prt, "/key", key,
 		rpcclient.ABCIQueryOptions{Height: int64(reqHeight), Prove: true},
 		node, cert)
 	if err != nil {
@@ -42,11 +45,11 @@ func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rp
 
 // GetWithProofOptions is useful if you want full access to the ABCIQueryOptions.
 // XXX Usage of path?  It's not used, and sometimes it's /, sometimes /key, sometimes /store.
-func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts rpcclient.ABCIQueryOptions,
+func GetWithProofOptions(ctx context.Context, prt *merkle.ProofRuntime, path string, key []byte, opts rpcclient.ABCIQueryOptions,
 	node rpcclient.Client, cert lite.Verifier) (
 	*ctypes.ResultABCIQuery, error) {
 	opts.Prove = true
-	res, err := node.ABCIQueryWithOptions(path, key, opts)
+	res, err := node.ABCIQueryWithOptions(ctx, path, key, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +61,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 		return nil, err
 	}
 
-	if len(resp.Key) == 0 || resp.Proof == nil {
+	if len(resp.Key) == 0 || resp.ProofOps == nil {
 		return nil, lerr.ErrEmptyTree()
 	}
 	if resp.Height == 0 {
@@ -66,7 +69,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 	}
 
 	// AppHash for height H is in header H+1
-	signedHeader, err := GetCertifiedCommit(resp.Height+1, node, cert)
+	signedHeader, err := GetCertifiedCommit(ctx, resp.Height+1, node, cert)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +85,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 		kp := merkle.KeyPath{}
 		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
 		kp = kp.AppendKey(resp.Key, merkle.KeyEncodingURL)
-		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, kp.String(), resp.Value)
+		err = prt.VerifyValue(resp.ProofOps, signedHeader.AppHash, kp.String(), resp.Value)
 		if err != nil {
 			return nil, errors.Wrap(err, "Couldn't verify value proof")
 		}
@@ -91,7 +94,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 		// Value absent
 		// Validate the proof against the certified header to ensure data integrity.
 		// XXX How do we encode the key into a string...
-		err = prt.VerifyAbsence(resp.Proof, signedHeader.AppHash, string(resp.Key))
+		err = prt.VerifyAbsence(resp.ProofOps, signedHeader.AppHash, string(resp.Key))
 		if err != nil {
 			return nil, errors.Wrap(err, "Couldn't verify absence proof")
 		}
@@ -119,13 +122,13 @@ func parseQueryStorePath(path string) (storeName string, err error) {
 
 // GetCertifiedCommit gets the signed header for a given height and certifies
 // it. Returns error if unable to get a proven header.
-func GetCertifiedCommit(h int64, client rpcclient.Client, cert lite.Verifier) (types.SignedHeader, error) {
+func GetCertifiedCommit(ctx context.Context, h int64, client rpcclient.Client, cert lite.Verifier) (types.SignedHeader, error) {
 
 	// FIXME: cannot use cert.GetByHeight for now, as it also requires
 	// Validators and will fail on querying tendermint for non-current height.
 	// When this is supported, we should use it instead...
 	rpcclient.WaitForHeight(client, h, nil)
-	cresp, err := client.Commit(&h)
+	cresp, err := client.Commit(ctx, &h)
 	if err != nil {
 		return types.SignedHeader{}, err
 	}

@@ -4,17 +4,16 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	"time"
-
-	cmn "github.com/tendermint/tendermint/libs/common"
-	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 )
 
 func main() {
-	wsc := rpcclient.NewWSClient("127.0.0.1:26657", "/websocket")
-	err := wsc.Start()
+	wsc,err := client.NewWS("127.0.0.1:26657", "/websocket")
+	err = wsc.Start()
 	if err != nil {
-		cmn.Exit(err.Error())
+		os.Exit(err.Error())
 	}
 	defer wsc.Stop()
 
@@ -37,7 +36,7 @@ func main() {
 		fmt.Print(".")
 		err = wsc.Call(context.TODO(), "broadcast_tx", map[string]interface{}{"tx": buf[:8]})
 		if err != nil {
-			cmn.Exit(err.Error())
+			os.Exit(err.Error())
 		}
 		if i%1000 == 0 {
 			fmt.Println(i)

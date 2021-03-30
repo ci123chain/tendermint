@@ -3,7 +3,7 @@ package benchmarks
 import (
 	"testing"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cmn "github.com/tendermint/tendermint/libs/rand"
 )
 
 func BenchmarkSomething(b *testing.B) {
@@ -12,11 +12,11 @@ func BenchmarkSomething(b *testing.B) {
 	numChecks := 100000
 	keys := make([]string, numItems)
 	for i := 0; i < numItems; i++ {
-		keys[i] = cmn.RandStr(100)
+		keys[i] = cmn.Str(100)
 	}
 	txs := make([]string, numChecks)
 	for i := 0; i < numChecks; i++ {
-		txs[i] = cmn.RandStr(100)
+		txs[i] = cmn.Str(100)
 	}
 	b.StartTimer()
 
