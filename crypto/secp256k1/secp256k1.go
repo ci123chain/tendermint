@@ -137,6 +137,10 @@ const PubKeySize = 33
 // This prefix is followed with the x-coordinate.
 type PubKey []byte
 
+func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
+	return pubKey.VerifySignature(msg, sig)
+}
+
 // Address returns a Bitcoin style addresses: RIPEMD160(SHA256(pubkey))
 func (pubKey PubKey) Address() crypto.Address {
 	if len(pubKey) != PubKeySize {

@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	ics23 "github.com/confio/ics23/go"
-	"github.com/cosmos/iavl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/cosmos/iavl"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -23,7 +23,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// TestABCIQuery tests ABCIQuery requests and verifies proofs. HAPPY PATH 😀
+//TestABCIQuery tests ABCIQuery requests and verifies proofs. HAPPY PATH 😀
 func TestABCIQuery(t *testing.T) {
 	tree, err := iavl.NewMutableTree(dbm.NewMemDB(), 100)
 	require.NoError(t, err)
