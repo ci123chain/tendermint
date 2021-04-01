@@ -312,15 +312,6 @@ func (mt *MultiplexTransport) acceptPeers() {
 				netAddr    *NetAddress
 			)
 
-			secretConn, nodeInfo, err, netAddr = mt.upgrade(c, nil)
-			if err == nil {
-				addr := c.RemoteAddr()
-				id := PubKeyToID(secretConn.RemotePubKey())
-				if netAddr == nil {
-					netAddr = NewNetAddress(id, addr)
-				}
-			}
-
 			err := mt.filterConn(c)
 			if err == nil {
 				secretConn, nodeInfo, err, netAddr = mt.upgrade(c, nil)
