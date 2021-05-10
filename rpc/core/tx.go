@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	types2 "github.com/tendermint/tendermint/abci/types"
 	"sort"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -29,7 +30,13 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 	}
 
 	if r == nil {
-		return nil, fmt.Errorf("tx (%X) not found", hash)
+		return &ctypes.ResultTx{
+			TxResult: types2.ResponseDeliverTx{
+				Code:                 types.CodeTxNotFound,
+				Log:                  fmt.Sprintf("tx (%X) not found", hash),
+			},
+		}, nil
+		//return nil, fmt.Errorf("tx (%X) not found", hash)
 	}
 
 	height := r.Height
@@ -41,6 +48,7 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 		proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
 	}
 
+	r.Result.Code = types.CodeQueryOK
 	return &ctypes.ResultTx{
 		Hash:     hash,
 		Height:   height,
@@ -119,6 +127,7 @@ func TxSearch(
 			proof = block.Data.Txs.Proof(int(r.Index)) // XXX: overflow on 32-bit machines
 		}
 
+		r.Result.Code = types.CodeQueryOK
 		apiResults = append(apiResults, &ctypes.ResultTx{
 			Hash:     types.Tx(r.Tx).Hash(),
 			Height:   r.Height,
