@@ -48,7 +48,6 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 		proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
 	}
 
-	r.Result.Code = types.CodeQueryOK
 	return &ctypes.ResultTx{
 		Hash:     hash,
 		Height:   height,
@@ -127,7 +126,6 @@ func TxSearch(
 			proof = block.Data.Txs.Proof(int(r.Index)) // XXX: overflow on 32-bit machines
 		}
 
-		r.Result.Code = types.CodeQueryOK
 		apiResults = append(apiResults, &ctypes.ResultTx{
 			Hash:     types.Tx(r.Tx).Hash(),
 			Height:   r.Height,
