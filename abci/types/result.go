@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	CodeTypeOK uint32 = 1
+	CodeTypeOK uint32 = 0
 )
 
 // IsOK returns true if Code is OK.
