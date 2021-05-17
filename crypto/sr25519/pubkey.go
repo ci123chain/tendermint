@@ -21,6 +21,10 @@ const (
 // PubKeySr25519 implements crypto.PubKey for the Sr25519 signature scheme.
 type PubKey []byte
 
+func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
+	return pubKey.VerifySignature(msg, sig)
+}
+
 // Address is the SHA256-20 of the raw pubkey bytes.
 func (pubKey PubKey) Address() crypto.Address {
 	return crypto.Address(tmhash.SumTruncated(pubKey[:]))
