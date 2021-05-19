@@ -2933,7 +2933,7 @@ func (m *TxResult) GetIndex() uint32 {
 
 func (m *TxResult) GetTxId() string {
 	if m != nil {
-		return m.TxId
+		return m.TxID
 	}
 	return ""
 }
@@ -6593,10 +6593,10 @@ func (m *TxResult) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x22
 	}
-	if len(m.TxId) > 0 {
-		i -= len(m.TxId)
-		copy(dAtA[i:], m.TxId)
-		i = encodeVarintTypes(dAtA, i, uint64(len(m.TxId)))
+	if len(m.TxID) > 0 {
+		i -= len(m.TxID)
+		copy(dAtA[i:], m.TxID)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.TxID)))
 		i--
 		dAtA[i] = 0x1a
 	}
@@ -8085,7 +8085,7 @@ func (m *TxResult) Size() (n int) {
 	if m.Index != 0 {
 		n += 1 + sovTypes(uint64(m.Index))
 	}
-	l = len(m.TxId)
+	l = len(m.TxID)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
@@ -14239,7 +14239,7 @@ func (m *TxResult) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TxId = string(dAtA[iNdEx:postIndex])
+			m.TxID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
