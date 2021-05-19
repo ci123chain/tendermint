@@ -508,6 +508,7 @@ func fireEvents(
 			Height: block.Height,
 			Index:  uint32(i),
 			Tx:     tx,
+			TxID:   fmt.Sprintf("%X", tx.Hash()),
 			Result: *(abciResponses.DeliverTxs[i]),
 		}}); err != nil {
 			logger.Error("failed publishing event TX", "err", err)
