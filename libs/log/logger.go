@@ -2,14 +2,14 @@ package log
 
 import (
 	"fmt"
-	"gitlab.oneitfarm.com/bifrost/cilog"
-	"gitlab.oneitfarm.com/bifrost/cilog/redis_hook"
-	logger "gitlab.oneitfarm.com/bifrost/cilog/v2"
-	"go.uber.org/zap/zapcore"
 	"io"
 	"os"
 
 	kitlog "github.com/go-kit/kit/log"
+	"gitlab.oneitfarm.com/bifrost/cilog"
+	"gitlab.oneitfarm.com/bifrost/cilog/redis_hook"
+	logger "gitlab.oneitfarm.com/bifrost/cilog/v2"
+	"go.uber.org/zap/zapcore"
 )
 
 // Logger is what any Tendermint library should take.
@@ -35,6 +35,8 @@ func NewSyncWriter(w io.Writer) io.Writer {
 	InitZTLogger()
 	return kitlog.NewSyncWriter(w)
 }
+
+
 
 type LogModeV2 int8
 const LogModeMid = 0

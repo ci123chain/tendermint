@@ -29,8 +29,8 @@ func init() {
 
 	// TODO: Have amino provide a way to go from concrete struct to route directly.
 	// Its currently a private API
-	nameTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoName
-	nameTable[reflect.TypeOf(secp256k1.PubKeySecp256k1{})] = secp256k1.PubKeyAminoName
+	nameTable[reflect.TypeOf(ed25519.PubKey{})] = ed25519.PubKeyName
+	nameTable[reflect.TypeOf(secp256k1.PubKey{})] = secp256k1.PubKeyName
 	nameTable[reflect.TypeOf(multisig.PubKeyMultisigThreshold{})] = multisig.PubKeyMultisigThresholdAminoRoute
 }
 
@@ -46,18 +46,18 @@ func PubkeyAminoName(cdc *amino.Codec, key crypto.PubKey) (string, bool) {
 func RegisterAmino(cdc *amino.Codec) {
 	// These are all written here instead of
 	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
-	cdc.RegisterConcrete(ed25519.PubKeyEd25519{},
-		ed25519.PubKeyAminoName, nil)
-	cdc.RegisterConcrete(secp256k1.PubKeySecp256k1{},
-		secp256k1.PubKeyAminoName, nil)
+	cdc.RegisterConcrete(ed25519.PubKey{},
+		ed25519.PubKeyName, nil)
+	cdc.RegisterConcrete(secp256k1.PubKey{},
+		secp256k1.PubKeyName, nil)
 	cdc.RegisterConcrete(multisig.PubKeyMultisigThreshold{},
 		multisig.PubKeyMultisigThresholdAminoRoute, nil)
 
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
-	cdc.RegisterConcrete(ed25519.PrivKeyEd25519{},
-		ed25519.PrivKeyAminoName, nil)
-	cdc.RegisterConcrete(secp256k1.PrivKeySecp256k1{},
-		secp256k1.PrivKeyAminoName, nil)
+	cdc.RegisterConcrete(ed25519.PrivKey{},
+		ed25519.PrivKeyName, nil)
+	cdc.RegisterConcrete(secp256k1.PrivKey{},
+		secp256k1.PrivKeyName, nil)
 }
 
 func PrivKeyFromBytes(privKeyBytes []byte) (privKey crypto.PrivKey, err error) {

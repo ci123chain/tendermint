@@ -1,11 +1,39 @@
+---
+order: 6
+---
+
 # Indexing Transactions
 
-Tendermint allows you to index transactions and later query or subscribe
-to their results.
+Tendermint allows you to index transactions and blocks and later query or
+subscribe to their results. Transactions are indexed by `TxResult.Events` and
+blocks are indexed by `Response(Begin|End)Block.Events`. However, transactions
+are also indexed by a primary key which includes the transaction hash and maps
+to and stores the corresponding `TxResult`. Blocks are indexed by a primary key
+which includes the block height and maps to and stores the block height, i.e.
+the block itself is never stored.
+
+Each event contains a type and a list of attributes, which are key-value pairs
+denoting something about what happened during the method's execution. For more
+details on `Events`, see the
+[ABCI](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#events)
+documentation.
+
+An `Event` has a composite key associated with it. A `compositeKey` is
+constructed by its type and key separated by a dot.
+
+For example:
+
+```json
+"jack": [
+  "account.number": 100
+]
+```
+
+would be equal to the composite key of `jack.account.number`.
 
 Let's take a look at the `[tx_index]` config section:
 
-```
+```toml
 ##### transactions indexer configuration options #####
 [tx_index]
 
@@ -15,87 +43,102 @@ Let's take a look at the `[tx_index]` config section:
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "kv"
-
-# Comma-separated list of tags to index (by default the only tag is "tx.hash")
-#
-# You can also index transactions by height by adding "tx.height" tag here.
-#
-# It's recommended to index only a subset of tags due to possible memory
-# bloat. This is, of course, depends on the indexer's DB and the volume of
-# transactions.
-index_tags = ""
-
-# When set to true, tells indexer to index all tags (predefined tags:
-# "tx.hash", "tx.height" and all tags from DeliverTx responses).
-#
-# Note this may be not desirable (see the comment above). IndexTags has a
-# precedence over IndexAllTags (i.e. when given both, IndexTags will be
-# indexed).
-index_all_tags = false
 ```
 
-By default, Tendermint will index all transactions by their respective
-hashes using an embedded simple indexer. Note, we are planning to add
-more options in the future (e.g., Postgresql indexer).
+By default, Tendermint will index all transactions by their respective hashes
+and height and blocks by their height.
 
-## Adding tags
+You can turn off indexing completely by setting `tx_index` to `null`.
 
-In your application's `DeliverTx` method, add the `Tags` field with the
-pairs of UTF-8 encoded strings (e.g. "account.owner": "Bob", "balance":
-"100.0", "date": "2018-01-02").
+## Default Indexes
+
+The Tendermint tx and block event indexer indexes a few select reserved events
+by default.
+
+### Transactions
+
+The following indexes are indexed by default:
+
+- `tx.height`
+- `tx.hash`
+
+### Blocks
+
+The following indexes are indexed by default:
+
+- `block.height`
+
+## Adding Events
+
+Applications are free to define which events to index. Tendermint does not
+expose functionality to define which events to index and which to ignore. In
+your application's `DeliverTx` method, add the `Events` field with pairs of
+UTF-8 encoded strings (e.g. "transfer.sender": "Bob", "transfer.recipient":
+"Alice", "transfer.balance": "100").
 
 Example:
 
-```
+```go
 func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Result {
-    ...
-    tags := []cmn.KVPair{
-      {[]byte("account.name"), []byte("igor")},
-      {[]byte("account.address"), []byte("0xdeadbeef")},
-      {[]byte("tx.amount"), []byte("7")},
+    //...
+    events := []abci.Event{
+        {
+            Type: "transfer",
+            Attributes: []abci.EventAttribute{
+                {Key: []byte("sender"), Value: []byte("Bob"), Index: true},
+                {Key: []byte("recipient"), Value: []byte("Alice"), Index: true},
+                {Key: []byte("balance"), Value: []byte("100"), Index: true},
+                {Key: []byte("note"), Value: []byte("nothing"), Index: true},
+            },
+        },
     }
-    return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
+    return types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
 }
 ```
 
-If you want Tendermint to only index transactions by "account.name" tag,
-in the config set `tx_index.index_tags="account.name"`. If you to index
-all tags, set `index_all_tags=true`
+If the indexer is not `null`, the transaction will be indexed. Each event is
+indexed using a composite key in the form of `{eventType}.{eventAttribute}={eventValue}`,
+e.g. `transfer.sender=bob`.
 
-Note, there are a few predefined tags:
+## Querying Transactions Events
 
-- `tx.hash` (transaction's hash)
-- `tx.height` (height of the block transaction was committed in)
+You can query for a paginated set of transaction by their events by calling the
+`/tx_search` RPC endpoint:
 
-Tendermint will throw a warning if you try to use any of the above keys.
-
-## Querying transactions
-
-You can query the transaction results by calling `/tx_search` RPC
-endpoint:
-
-```
-curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
+```bash
+curl "localhost:26657/tx_search?query=\"message.sender='cosmos1...'\"&prove=true"
 ```
 
-Check out [API docs](https://tendermint.com/rpc/#txsearch)
+Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/tx_search)
 for more information on query syntax and other options.
 
-## Subscribing to transactions
+## Subscribing to Transactions
 
-Clients can subscribe to transactions with the given tags via Websocket
-by providing a query to `/subscribe` RPC endpoint.
+Clients can subscribe to transactions with the given tags via WebSocket by providing
+a query to `/subscribe` RPC endpoint.
 
-```
+```json
 {
-    "jsonrpc": "2.0",
-    "method": "subscribe",
-    "id": "0",
-    "params": {
-        "query": "account.name='igor'"
-    }
+  "jsonrpc": "2.0",
+  "method": "subscribe",
+  "id": "0",
+  "params": {
+    "query": "message.sender='cosmos1...'"
+  }
 }
 ```
 
-Check out [API docs](https://tendermint.com/rpc/#subscribe) for
-more information on query syntax and other options.
+Check out [API docs](https://docs.tendermint.com/master/rpc/#subscribe) for more information
+on query syntax and other options.
+
+## Querying Blocks Events
+
+You can query for a paginated set of blocks by their events by calling the
+`/block_search` RPC endpoint:
+
+```bash
+curl "localhost:26657/block_search?query=\"block.height > 10 AND val_set.num_changed > 0\""
+```
+
+Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/block_search)
+for more information on query syntax and other options.

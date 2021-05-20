@@ -58,6 +58,23 @@ func IsErrCommitNotFound(err error) bool {
 }
 
 //-----------------
+// ErrTooMuchChange
+
+func IsErrTooMuchChange(err error) bool {
+	_, ok := errors.Cause(err).(errTooMuchChange)
+	return ok
+}
+
+type errTooMuchChange struct {
+	got    int64
+	needed int64
+}
+
+func (e errTooMuchChange) Error() string {
+	return fmt.Sprintf("Invalid commit -- insufficient old voting power: got %v, needed %v", e.got, e.needed)
+}
+
+//-----------------
 // ErrUnexpectedValidators
 
 // ErrUnexpectedValidators indicates a validator set mismatch.

@@ -6,8 +6,13 @@ import (
 	"net"
 	"time"
 
+	"golang.org/x/net/netutil"
+
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/libs/async"
+	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/p2p/conn"
+	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
 const (
@@ -85,7 +90,7 @@ func ConnDuplicateIPFilter() ConnFilterFunc {
 			if cs.HasIP(ip) {
 				return ErrRejected{
 					conn:        c,
-					err:         fmt.Errorf("IP<%v> already connected", ip),
+					err:         fmt.Errorf("ip<%v> already connected", ip),
 					isDuplicate: true,
 				}
 			}
@@ -120,11 +125,18 @@ func MultiplexTransportResolver(resolver IPResolver) MultiplexTransportOption {
 	return func(mt *MultiplexTransport) { mt.resolver = resolver }
 }
 
+// MultiplexTransportMaxIncomingConnections sets the maximum number of
+// simultaneous connections (incoming). Default: 0 (unlimited)
+func MultiplexTransportMaxIncomingConnections(n int) MultiplexTransportOption {
+	return func(mt *MultiplexTransport) { mt.maxIncomingConnections = n }
+}
+
 // MultiplexTransport accepts and dials tcp connections and upgrades them to
 // multiplexed peers.
 type MultiplexTransport struct {
-	netAddr  NetAddress
-	listener net.Listener
+	netAddr                NetAddress
+	listener               net.Listener
+	maxIncomingConnections int // see MaxIncomingConnections
 
 	acceptc chan accept
 	closec  chan struct{}
@@ -198,6 +210,9 @@ func (mt *MultiplexTransport) Dial(
 	addr NetAddress,
 	cfg peerConfig,
 ) (Peer, error) {
+	if mt.netAddr.ID == addr.ID {
+		return nil, nil
+	}
 	c, err := addr.DialTimeout(mt.dialTimeout)
 	if err != nil {
 		return nil, err
@@ -208,9 +223,8 @@ func (mt *MultiplexTransport) Dial(
 		return nil, err
 	}
 
-	secretConn, nodeInfo, err := mt.upgrade(c, &addr)
+	secretConn, nodeInfo, err, _ := mt.upgrade(c, &addr)
 	if err != nil {
-		c.Close()
 		return nil, err
 	}
 
@@ -239,6 +253,10 @@ func (mt *MultiplexTransport) Listen(addr NetAddress) error {
 		return err
 	}
 
+	if mt.maxIncomingConnections > 0 {
+		ln = netutil.LimitListener(ln, mt.maxIncomingConnections)
+	}
+
 	mt.netAddr = addr
 	mt.listener = ln
 
@@ -246,25 +264,6 @@ func (mt *MultiplexTransport) Listen(addr NetAddress) error {
 
 	return nil
 }
-
-//func (mt *MultiplexTransport) Listen2(addr NetAddress) error {
-//	config := &tls.Config{
-//		//Certificates:    []tls.Certificate{cert},
-//		InsecureSkipVerify: true,
-//		ClientAuth:   tls.RequireAndVerifyClientCert,
-//		//ClientCAs:    clientCertPool,
-//	}
-//	ln, err := tls.Listen("tcp", ":9000", config)
-//	if err != nil {
-//		return err
-//	}
-//	mt.netAddr = addr
-//	mt.listener = ln
-//
-//	go mt.acceptPeers()
-//
-//	return nil
-//}
 
 func (mt *MultiplexTransport) acceptPeers() {
 	for {
@@ -290,18 +289,38 @@ func (mt *MultiplexTransport) acceptPeers() {
 		//
 		// [0] https://en.wikipedia.org/wiki/Head-of-line_blocking
 		go func(c net.Conn) {
+			defer func() {
+				if r := recover(); r != nil {
+					err := ErrRejected{
+						conn:          c,
+						err:           fmt.Errorf("recovered from panic: %v", r),
+						isAuthFailure: true,
+					}
+					select {
+					case mt.acceptc <- accept{err: err}:
+					case <-mt.closec:
+						// Give up if the transport was closed.
+						_ = c.Close()
+						return
+					}
+				}
+			}()
+
 			var (
 				nodeInfo   NodeInfo
 				secretConn *conn.SecretConnection
 				netAddr    *NetAddress
 			)
+
 			err := mt.filterConn(c)
 			if err == nil {
-				secretConn, nodeInfo, err = mt.upgrade(c, nil)
+				secretConn, nodeInfo, err, netAddr = mt.upgrade(c, nil)
 				if err == nil {
 					addr := c.RemoteAddr()
 					id := PubKeyToID(secretConn.RemotePubKey())
-					netAddr = NewNetAddress(id, addr)
+					if netAddr == nil {
+						netAddr = NewNetAddress(id, addr)
+					}
 				}
 			}
 
@@ -376,7 +395,7 @@ func (mt *MultiplexTransport) filterConn(c net.Conn) (err error) {
 func (mt *MultiplexTransport) upgrade(
 	c net.Conn,
 	dialedAddr *NetAddress,
-) (secretConn *conn.SecretConnection, nodeInfo NodeInfo, err error) {
+) (secretConn *conn.SecretConnection, nodeInfo NodeInfo, err error, remote *NetAddress) {
 	defer func() {
 		if err != nil {
 			_ = mt.cleanup(c)
@@ -389,7 +408,21 @@ func (mt *MultiplexTransport) upgrade(
 			conn:          c,
 			err:           fmt.Errorf("secret conn failed: %v", err),
 			isAuthFailure: true,
-		}
+		}, nil
+	}
+	tmAddr := tmp2p.NetAddress{}
+	tmAddr.ID = string(mt.netAddr.ID)
+	tmAddr.IP = mt.netAddr.IP.String()
+	tmAddr.Port = uint32(mt.netAddr.Port)
+	tmAddr.Host = mt.netAddr.Host
+	tmAddr.Tls = mt.netAddr.TLS
+	remote, err = exchangeInfoConn(c, mt.handshakeTimeout, tmAddr)
+	if err != nil {
+		return nil, nil, ErrRejected{
+			conn:          c,
+			err:           fmt.Errorf("exchange host info failed: %v", err),
+			isAuthFailure: true,
+		}, nil
 	}
 
 	// For outgoing conns, ensure connection key matches dialed key.
@@ -405,7 +438,7 @@ func (mt *MultiplexTransport) upgrade(
 					dialedID,
 				),
 				isAuthFailure: true,
-			}
+			}, nil
 		}
 	}
 
@@ -415,7 +448,7 @@ func (mt *MultiplexTransport) upgrade(
 			conn:          c,
 			err:           fmt.Errorf("handshake failed: %v", err),
 			isAuthFailure: true,
-		}
+		}, nil
 	}
 
 	if err := nodeInfo.Validate(); err != nil {
@@ -423,7 +456,7 @@ func (mt *MultiplexTransport) upgrade(
 			conn:              c,
 			err:               err,
 			isNodeInfoInvalid: true,
-		}
+		}, nil
 	}
 
 	// Ensure connection key matches self reported key.
@@ -437,7 +470,7 @@ func (mt *MultiplexTransport) upgrade(
 				nodeInfo.ID(),
 			),
 			isAuthFailure: true,
-		}
+		}, nil
 	}
 
 	// Reject self.
@@ -447,7 +480,7 @@ func (mt *MultiplexTransport) upgrade(
 			conn:   c,
 			id:     nodeInfo.ID(),
 			isSelf: true,
-		}
+		}, nil
 	}
 
 	if err := mt.nodeInfo.CompatibleWith(nodeInfo); err != nil {
@@ -456,10 +489,14 @@ func (mt *MultiplexTransport) upgrade(
 			err:            err,
 			id:             nodeInfo.ID(),
 			isIncompatible: true,
-		}
+		}, nil
 	}
 
-	return secretConn, nodeInfo, nil
+	if dialedAddr == nil {
+		return secretConn, nodeInfo, nil, remote
+	}
+
+	return secretConn, nodeInfo, nil, nil
 }
 
 func (mt *MultiplexTransport) wrapPeer(
@@ -513,20 +550,18 @@ func handshake(
 	var (
 		errc = make(chan error, 2)
 
-		peerNodeInfo DefaultNodeInfo
-		ourNodeInfo  = nodeInfo.(DefaultNodeInfo)
+		pbpeerNodeInfo tmp2p.DefaultNodeInfo
+		peerNodeInfo   DefaultNodeInfo
+		ourNodeInfo    = nodeInfo.(DefaultNodeInfo)
 	)
 
 	go func(errc chan<- error, c net.Conn) {
-		_, err := cdc.MarshalBinaryLengthPrefixedWriter(c, ourNodeInfo)
+		_, err := protoio.NewDelimitedWriter(c).WriteMsg(ourNodeInfo.ToProto())
 		errc <- err
 	}(errc, c)
 	go func(errc chan<- error, c net.Conn) {
-		_, err := cdc.UnmarshalBinaryLengthPrefixedReader(
-			c,
-			&peerNodeInfo,
-			int64(MaxNodeInfoSize()),
-		)
+		protoReader := protoio.NewDelimitedReader(c, MaxNodeInfoSize())
+		_, err := protoReader.ReadMsg(&pbpeerNodeInfo)
 		errc <- err
 	}(errc, c)
 
@@ -535,6 +570,11 @@ func handshake(
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	peerNodeInfo, err := DefaultNodeInfoFromToProto(&pbpeerNodeInfo)
+	if err != nil {
+		return nil, err
 	}
 
 	return peerNodeInfo, c.SetDeadline(time.Time{})
@@ -556,6 +596,47 @@ func upgradeSecretConn(
 
 	return sc, sc.SetDeadline(time.Time{})
 }
+
+func exchangeInfoConn(c net.Conn, timeout time.Duration, add tmp2p.NetAddress) (*NetAddress, error) {
+
+	if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return nil, err
+	}
+	var trs, _ = async.Parallel(
+		func(_ int) (val interface{}, abort bool, err error) {
+			var _, err1 = protoio.NewDelimitedWriter(c).WriteMsg(&add)
+			if err1 != nil {
+				return nil, false, err
+			}
+			return nil, false, nil
+		},
+
+		func(_ int) (val interface{}, abort bool, err error) {
+			var remoteAddr tmp2p.NetAddress
+			var _, err2 = protoio.NewDelimitedReader(c, 1024*1024).ReadMsg(&remoteAddr)
+			if err2 != nil {
+				return nil, true, err2
+			}
+			return remoteAddr, false, nil
+		}, )
+
+	if trs.FirstError() != nil {
+		err := trs.FirstError()
+		return nil, err
+	}
+	re := trs.FirstValue().(tmp2p.NetAddress)
+	remote := NetAddress{
+		ID:   ID(re.ID),
+		IP:   net.ParseIP(re.IP),
+		Port: uint16(re.Port),
+		Host: re.Host,
+		TLS:  re.Tls,
+	}
+
+	return &remote, nil
+}
+
+
 
 func resolveIPs(resolver IPResolver, c net.Conn) ([]net.IP, error) {
 	host, _, err := net.SplitHostPort(c.RemoteAddr().String())

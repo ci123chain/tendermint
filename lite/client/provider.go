@@ -6,12 +6,14 @@ and validators directly from a Tendermint client.
 package client
 
 import (
+	"context"
 	"fmt"
 
 	log "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/lite"
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	h "github.com/tendermint/tendermint/rpc/client/http"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -40,7 +42,8 @@ func NewProvider(chainID string, client SignStatusClient) lite.Provider {
 // NewHTTPProvider can connect to a tendermint json-rpc endpoint
 // at the given url, and uses that as a read-only provider.
 func NewHTTPProvider(chainID, remote string) lite.Provider {
-	return NewProvider(chainID, rpcclient.NewHTTP(remote, "/websocket"))
+	c, _ := h.New(remote, "/websocket")
+	return NewProvider(chainID, c)
 }
 
 // Implements Provider.
@@ -75,7 +78,7 @@ func (p *provider) LatestFullCommit(chainID string, minHeight, maxHeight int64) 
 
 // fetchLatestCommit fetches the latest commit from the client.
 func (p *provider) fetchLatestCommit(minHeight int64, maxHeight int64) (*ctypes.ResultCommit, error) {
-	status, err := p.client.Status()
+	status, err := p.client.Status(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +92,7 @@ func (p *provider) fetchLatestCommit(minHeight int64, maxHeight int64) (*ctypes.
 	} else if status.SyncInfo.LatestBlockHeight < maxHeight {
 		maxHeight = status.SyncInfo.LatestBlockHeight
 	}
-	return p.client.Commit(&maxHeight)
+	return p.client.Commit(context.Background(), &maxHeight)
 }
 
 // Implements Provider.
@@ -106,7 +109,9 @@ func (p *provider) getValidatorSet(chainID string, height int64) (valset *types.
 		err = fmt.Errorf("expected height >= 1, got height %v", height)
 		return
 	}
-	res, err := p.client.Validators(&height)
+	page := 10
+	perPage := 10
+	res, err := p.client.Validators(context.Background(), &height, &page, &perPage)
 	if err != nil {
 		// TODO pass through other types of errors.
 		return nil, lerr.ErrUnknownValidators(chainID, height)
