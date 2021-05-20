@@ -2,6 +2,7 @@ package log
 
 import (
 	"fmt"
+	logger "gitlab.oneitfarm.com/bifrost/cilog/v2"
 	"io"
 
 	kitlog "github.com/go-kit/kit/log"
@@ -51,36 +52,54 @@ func NewTMLoggerWithColorFn(w io.Writer, colorFn func(keyvals ...interface{}) te
 
 // Info logs a message at level Info.
 func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
-	lWithLevel := kitlevel.Info(l.srcLogger)
+	switch {
+	case LogMode.TM():
+		lWithLevel := kitlevel.Info(l.srcLogger)
+		if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
+			errLogger := kitlevel.Error(l.srcLogger)
+			kitlog.With(errLogger, msgKey, msg).Log("err", err)
+		}
 
-	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
-		errLogger := kitlevel.Error(l.srcLogger)
-		kitlog.With(errLogger, msgKey, msg).Log("err", err) //nolint:errcheck // no need to check error again
+	default:
+		logger.Infow(msg, keyvals...)
 	}
 }
 
 // Debug logs a message at level Debug.
 func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
-	lWithLevel := kitlevel.Debug(l.srcLogger)
+	switch {
+	case LogMode.TM():
+		lWithLevel := kitlevel.Debug(l.srcLogger)
+		if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
+			errLogger := kitlevel.Error(l.srcLogger)
+			kitlog.With(errLogger, msgKey, msg).Log("err", err)
+		}
 
-	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
-		errLogger := kitlevel.Error(l.srcLogger)
-		kitlog.With(errLogger, msgKey, msg).Log("err", err) //nolint:errcheck // no need to check error again
+	default:
+		logger.Debugw(msg, keyvals...)
 	}
 }
 
 // Error logs a message at level Error.
 func (l *tmLogger) Error(msg string, keyvals ...interface{}) {
-	lWithLevel := kitlevel.Error(l.srcLogger)
+	switch {
+	case LogMode.TM():
+		lWithLevel := kitlevel.Error(l.srcLogger)
+		lWithMsg := kitlog.With(lWithLevel, msgKey, msg)
+		if err := lWithMsg.Log(keyvals...); err != nil {
+			lWithMsg.Log("err", err)
+		}
 
-	lWithMsg := kitlog.With(lWithLevel, msgKey, msg)
-	if err := lWithMsg.Log(keyvals...); err != nil {
-		lWithMsg.Log("err", err) //nolint:errcheck // no need to check error again
+	default:
+		logger.Errorw(msg, keyvals...)
 	}
 }
-
 // With returns a new contextual logger with keyvals prepended to those passed
 // to calls to Info, Debug or Error.
 func (l *tmLogger) With(keyvals ...interface{}) Logger {
+	if LogMode.ZT() {
+		logger.With(keyvals...)
+	}
+
 	return &tmLogger{kitlog.With(l.srcLogger, keyvals...)}
 }
