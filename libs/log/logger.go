@@ -32,7 +32,6 @@ type Logger interface {
 //        Fd() uintptr
 //    }
 func NewSyncWriter(w io.Writer) io.Writer {
-	InitOneitfarmLogger()
 	return kitlog.NewSyncWriter(w)
 }
 
@@ -74,4 +73,8 @@ func InitOneitfarmLogger() {
 		// 若不影响程序执行，可忽视
 		panic(fmt.Sprintf("[ERR] Logger init error: %v", err))
 	}
+}
+
+func init() {
+	InitOneitfarmLogger()
 }
