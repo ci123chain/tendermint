@@ -328,6 +328,8 @@ type Header struct {
 	ChainID string              `json:"chain_id"`
 	Height  int64               `json:"height"`
 	Time    time.Time           `json:"time"`
+	NumTxs   int64             `json:"num_txs"`
+	TotalTxs int64             `json:"total_txs"`
 
 	// prev block info
 	LastBlockID BlockID `json:"last_block_id"`
@@ -354,7 +356,7 @@ type Header struct {
 // Call this after MakeBlock to complete the Header.
 func (h *Header) Populate(
 	version tmversion.Consensus, chainID string,
-	timestamp time.Time, lastBlockID BlockID,
+	timestamp time.Time, lastBlockID BlockID, totalTxs int64,
 	valHash, nextValHash []byte,
 	consensusHash, appHash, lastResultsHash []byte,
 	proposerAddress Address,
@@ -363,6 +365,7 @@ func (h *Header) Populate(
 	h.ChainID = chainID
 	h.Time = timestamp
 	h.LastBlockID = lastBlockID
+	h.TotalTxs = totalTxs
 	h.ValidatorsHash = valHash
 	h.NextValidatorsHash = nextValHash
 	h.ConsensusHash = consensusHash

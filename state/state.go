@@ -54,6 +54,7 @@ type State struct {
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight int64
+	LastBlockTotalTx int64
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 
@@ -89,6 +90,7 @@ func (state State) Copy() State {
 		InitialHeight: state.InitialHeight,
 
 		LastBlockHeight: state.LastBlockHeight,
+		LastBlockTotalTx: state.LastBlockTotalTx,
 		LastBlockID:     state.LastBlockID,
 		LastBlockTime:   state.LastBlockTime,
 
@@ -254,7 +256,7 @@ func (state State) MakeBlock(
 	// Fill rest of header with state data.
 	block.Header.Populate(
 		state.Version.Consensus, state.ChainID,
-		timestamp, state.LastBlockID,
+		timestamp, state.LastBlockID, state.LastBlockTotalTx+block.NumTxs,
 		state.Validators.Hash(), state.NextValidators.Hash(),
 		types.HashConsensusParams(state.ConsensusParams), state.AppHash, state.LastResultsHash,
 		proposerAddress,
