@@ -50,6 +50,14 @@ func validateBlock(state State, block *types.Block) error {
 		)
 	}
 
+	newTxs := int64(len(block.Data.Txs))
+	if block.TotalTxs != state.LastBlockTotalTx+newTxs {
+		return fmt.Errorf("Wrong Block.Header.TotalTxs. Expected %v, got %v",
+			state.LastBlockTotalTx+newTxs,
+			block.TotalTxs,
+		)
+	}
+
 	// Validate app info
 	if !bytes.Equal(block.AppHash, state.AppHash) {
 		return fmt.Errorf("wrong Block.Header.AppHash.  Expected %X, got %v",

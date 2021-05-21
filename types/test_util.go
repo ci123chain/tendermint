@@ -89,6 +89,7 @@ func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) 
 		Header: Header{
 			Version: tmversion.Consensus{Block: version.BlockProtocol, App: 0},
 			Height:  height,
+			NumTxs: int64(len(txs)),
 		},
 		Data: Data{
 			Txs: txs,
