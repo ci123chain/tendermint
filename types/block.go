@@ -64,6 +64,19 @@ func (b *Block) ValidateBasic() error {
 		return fmt.Errorf("invalid header: %w", err)
 	}
 
+	// NOTE: Timestamp validation is subtle and handled elsewhere.
+
+	newTxs := int64(len(b.Data.Txs))
+	if b.NumTxs != newTxs {
+		return fmt.Errorf("Wrong Header.NumTxs. Expected %v, got %v",
+			newTxs,
+			b.NumTxs,
+		)
+	}
+	if b.TotalTxs < 0 {
+		return errors.New("Negative Header.TotalTxs")
+	}
+
 	// Validate the last commit and its hash.
 	if b.LastCommit == nil {
 		return errors.New("nil LastCommit")
@@ -464,6 +477,8 @@ func (h *Header) Hash() tmbytes.HexBytes {
 		cdcEncode(h.ChainID),
 		cdcEncode(h.Height),
 		pbt,
+		cdcEncode(h.NumTxs),
+		cdcEncode(h.TotalTxs),
 		bzbi,
 		cdcEncode(h.LastCommitHash),
 		cdcEncode(h.DataHash),
@@ -487,6 +502,8 @@ func (h *Header) StringIndented(indent string) string {
 %s  ChainID:        %v
 %s  Height:         %v
 %s  Time:           %v
+%s  NumTxs:         %v
+%s  TotalTxs:       %v
 %s  LastBlockID:    %v
 %s  LastCommit:     %v
 %s  Data:           %v
@@ -502,6 +519,8 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.ChainID,
 		indent, h.Height,
 		indent, h.Time,
+		indent, h.NumTxs,
+		indent, h.TotalTxs,
 		indent, h.LastBlockID,
 		indent, h.LastCommitHash,
 		indent, h.DataHash,

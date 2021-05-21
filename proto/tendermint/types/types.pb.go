@@ -268,6 +268,8 @@ type Header struct {
 	ChainID string            `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
 	Height  int64             `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
 	Time    time.Time         `protobuf:"bytes,4,opt,name=time,proto3,stdtime" json:"time"`
+	NumTxs   int64     `protobuf:"varint,5,opt,name=num_txs,json=numTxs,proto3" json:"num_txs,omitempty"`
+	TotalTxs int64     `protobuf:"varint,6,opt,name=total_txs,json=totalTxs,proto3" json:"total_txs,omitempty"`
 	// prev block info
 	LastBlockId BlockID `protobuf:"bytes,5,opt,name=last_block_id,json=lastBlockId,proto3" json:"last_block_id"`
 	// hashes of block data
@@ -343,6 +345,20 @@ func (m *Header) GetTime() time.Time {
 		return m.Time
 	}
 	return time.Time{}
+}
+
+func (m *Header) GetNumTxs() int64 {
+	if m != nil {
+		return m.NumTxs
+	}
+	return 0
+}
+
+func (m *Header) GetTotalTxs() int64 {
+	if m != nil {
+		return m.TotalTxs
+	}
+	return 0
 }
 
 func (m *Header) GetLastBlockId() BlockID {
