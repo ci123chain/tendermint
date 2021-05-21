@@ -279,6 +279,8 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 		}
 		b.LastCommit = lc
 	}
+	b.NumTxs = bp.Header.NumTxs
+	b.TotalTxs = bp.Header.TotalTxs
 
 	return b, b.ValidateBasic()
 }
@@ -545,6 +547,8 @@ func (h *Header) ToProto() *tmproto.Header {
 		ChainID:            h.ChainID,
 		Height:             h.Height,
 		Time:               h.Time,
+		NumTxs:   		    h.NumTxs,
+		TotalTxs: 			h.TotalTxs,
 		LastBlockId:        h.LastBlockID.ToProto(),
 		ValidatorsHash:     h.ValidatorsHash,
 		NextValidatorsHash: h.NextValidatorsHash,
@@ -576,6 +580,8 @@ func HeaderFromProto(ph *tmproto.Header) (Header, error) {
 	h.ChainID = ph.ChainID
 	h.Height = ph.Height
 	h.Time = ph.Time
+	h.NumTxs = ph.NumTxs
+	h.TotalTxs = ph.TotalTxs
 	h.Height = ph.Height
 	h.LastBlockID = *bi
 	h.ValidatorsHash = ph.ValidatorsHash
