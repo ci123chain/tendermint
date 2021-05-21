@@ -32,32 +32,22 @@ type Logger interface {
 //        Fd() uintptr
 //    }
 func NewSyncWriter(w io.Writer) io.Writer {
-	InitZTLogger()
+	InitOneitfarmLogger()
 	return kitlog.NewSyncWriter(w)
 }
 
+var LogModeOneitfarm = false
 
-
-type LogModeV2 int8
-const LogModeMid = 0
-const LogModeTM = 1
-func (mode LogModeV2) TM() bool {
-	return mode == LogModeTM
+func OneitfarmLog() bool {
+	return LogModeOneitfarm
 }
 
-func (mode LogModeV2) ZT() bool {
-	return mode == LogModeMid
-}
-
-var LogMode LogModeV2 = LogModeMid
-
-func InitZTLogger() {
-	// To pass test.
+func InitOneitfarmLogger() {
 	appID := os.Getenv("IDG_APPID")
 	if len(appID) == 0 {
-		LogMode = LogModeTM
 		return
 	}
+	LogModeOneitfarm = true
 
 	conf := &logger.Conf{
 		Level:  zapcore.InfoLevel, // 输出日志等级
