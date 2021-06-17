@@ -197,6 +197,7 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 	state.LastBlockID = *bi
 	state.LastBlockHeight = pb.LastBlockHeight
 	state.LastBlockTime = pb.LastBlockTime
+	state.LastBlockTotalTx = pb.LastBlockTotalTx
 
 	vals, err := types.ValidatorSetFromProto(pb.Validators)
 	if err != nil {
