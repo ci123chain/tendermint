@@ -6,9 +6,9 @@ package state
 import (
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
-	proto "github.com/gogo/protobuf/proto"
-	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+	proto "github.com/golang/protobuf/proto"
+	_ "github.com/golang/protobuf/ptypes/timestamp"
 	types "github.com/tendermint/tendermint/abci/types"
 	types1 "github.com/tendermint/tendermint/proto/tendermint/types"
 	version "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -28,15 +28,18 @@ var _ = time.Kitchen
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // ABCIResponses retains the responses
 // of the various ABCI calls during block processing.
 // It is persisted to disk for each height before calling Commit.
 type ABCIResponses struct {
-	DeliverTxs []*types.ResponseDeliverTx `protobuf:"bytes,1,rep,name=deliver_txs,json=deliverTxs,proto3" json:"deliver_txs,omitempty"`
-	EndBlock   *types.ResponseEndBlock    `protobuf:"bytes,2,opt,name=end_block,json=endBlock,proto3" json:"end_block,omitempty"`
-	BeginBlock *types.ResponseBeginBlock  `protobuf:"bytes,3,opt,name=begin_block,json=beginBlock,proto3" json:"begin_block,omitempty"`
+	DeliverTxs           []*types.ResponseDeliverTx `protobuf:"bytes,1,rep,name=deliver_txs,json=deliverTxs,proto3" json:"deliver_txs,omitempty"`
+	EndBlock             *types.ResponseEndBlock    `protobuf:"bytes,2,opt,name=end_block,json=endBlock,proto3" json:"end_block,omitempty"`
+	BeginBlock           *types.ResponseBeginBlock  `protobuf:"bytes,3,opt,name=begin_block,json=beginBlock,proto3" json:"begin_block,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                   `json:"-"`
+	XXX_unrecognized     []byte                     `json:"-"`
+	XXX_sizecache        int32                      `json:"-"`
 }
 
 func (m *ABCIResponses) Reset()         { *m = ABCIResponses{} }
@@ -95,8 +98,11 @@ func (m *ABCIResponses) GetBeginBlock() *types.ResponseBeginBlock {
 
 // ValidatorsInfo represents the latest validator set, or the last height it changed
 type ValidatorsInfo struct {
-	ValidatorSet      *types1.ValidatorSet `protobuf:"bytes,1,opt,name=validator_set,json=validatorSet,proto3" json:"validator_set,omitempty"`
-	LastHeightChanged int64                `protobuf:"varint,2,opt,name=last_height_changed,json=lastHeightChanged,proto3" json:"last_height_changed,omitempty"`
+	ValidatorSet         *types1.ValidatorSet `protobuf:"bytes,1,opt,name=validator_set,json=validatorSet,proto3" json:"validator_set,omitempty"`
+	LastHeightChanged    int64                `protobuf:"varint,2,opt,name=last_height_changed,json=lastHeightChanged,proto3" json:"last_height_changed,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
 func (m *ValidatorsInfo) Reset()         { *m = ValidatorsInfo{} }
@@ -148,8 +154,11 @@ func (m *ValidatorsInfo) GetLastHeightChanged() int64 {
 
 // ConsensusParamsInfo represents the latest consensus params, or the last height it changed
 type ConsensusParamsInfo struct {
-	ConsensusParams   types1.ConsensusParams `protobuf:"bytes,1,opt,name=consensus_params,json=consensusParams,proto3" json:"consensus_params"`
-	LastHeightChanged int64                  `protobuf:"varint,2,opt,name=last_height_changed,json=lastHeightChanged,proto3" json:"last_height_changed,omitempty"`
+	ConsensusParams      types1.ConsensusParams `protobuf:"bytes,1,opt,name=consensus_params,json=consensusParams,proto3" json:"consensus_params"`
+	LastHeightChanged    int64                  `protobuf:"varint,2,opt,name=last_height_changed,json=lastHeightChanged,proto3" json:"last_height_changed,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
+	XXX_unrecognized     []byte                 `json:"-"`
+	XXX_sizecache        int32                  `json:"-"`
 }
 
 func (m *ConsensusParamsInfo) Reset()         { *m = ConsensusParamsInfo{} }
@@ -200,8 +209,11 @@ func (m *ConsensusParamsInfo) GetLastHeightChanged() int64 {
 }
 
 type Version struct {
-	Consensus version.Consensus `protobuf:"bytes,1,opt,name=consensus,proto3" json:"consensus"`
-	Software  string            `protobuf:"bytes,2,opt,name=software,proto3" json:"software,omitempty"`
+	Consensus            version.Consensus `protobuf:"bytes,1,opt,name=consensus,proto3" json:"consensus"`
+	Software             string            `protobuf:"bytes,2,opt,name=software,proto3" json:"software,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
 }
 
 func (m *Version) Reset()         { *m = Version{} }
@@ -259,7 +271,7 @@ type State struct {
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight  int64          `protobuf:"varint,3,opt,name=last_block_height,json=lastBlockHeight,proto3" json:"last_block_height,omitempty"`
 	LastBlockTotalTx int64          `protobuf:"varint,4,opt,name=last_block_total_tx,json=lastBlockTotalTx,proto3" json:"last_block_total_tx,omitempty"`
-	LastBlockID      types2.BlockID `protobuf:"bytes,5,opt,name=last_block_id,json=lastBlockId,proto3" json:"last_block_id"`
+	LastBlockID      types1.BlockID `protobuf:"bytes,5,opt,name=last_block_id,json=lastBlockId,proto3" json:"last_block_id"`
 	LastBlockTime    time.Time      `protobuf:"bytes,6,opt,name=last_block_time,json=lastBlockTime,proto3,stdtime" json:"last_block_time"`
 	// LastValidators is used to validate block.LastCommit.
 	// Validators are persisted to the database separately every time they change,
@@ -352,11 +364,11 @@ func (m *State) GetLastBlockTotalTx() int64 {
 	return 0
 }
 
-func (m *State) GetLastBlockID() types2.BlockID {
+func (m *State) GetLastBlockID() types1.BlockID {
 	if m != nil {
 		return m.LastBlockID
 	}
-	return types2.BlockID{}
+	return types1.BlockID{}
 }
 
 func (m *State) GetLastBlockTime() time.Time {
@@ -2073,7 +2085,6 @@ func skipTypes(dAtA []byte) (n int, err error) {
 }
 
 var (
-	ErrInvalidLengthTypes        = fmt.Errorf("proto: negative length found during unmarshaling")
-	ErrIntOverflowTypes          = fmt.Errorf("proto: integer overflow")
-	ErrUnexpectedEndOfGroupTypes = fmt.Errorf("proto: unexpected end of group")
+	ErrInvalidLengthTypes = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowTypes   = fmt.Errorf("proto: integer overflow")
 )
