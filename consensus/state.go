@@ -1778,8 +1778,8 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 		}
 	}
 
-	cs.metrics.NumTxs.Set(float64(len(block.Data.Txs)))
-	cs.metrics.TotalTxs.Add(float64(len(block.Data.Txs)))
+	cs.metrics.NumTxs.Set(float64(block.NumTxs))
+	cs.metrics.TotalTxs.Set(float64(block.TotalTxs))
 	cs.metrics.BlockSizeBytes.Set(float64(block.Size()))
 	cs.metrics.CommittedHeight.Set(float64(block.Height))
 }

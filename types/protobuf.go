@@ -38,6 +38,8 @@ func (tm2pb) Header(header *Header) tmproto.Header {
 		ChainID: header.ChainID,
 		Height:  header.Height,
 		Time:    header.Time,
+		NumTxs:   header.NumTxs,
+		TotalTxs: header.TotalTxs,
 
 		LastBlockId: header.LastBlockID.ToProto(),
 

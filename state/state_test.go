@@ -7,12 +7,14 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/gogo/protobuf/proto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -1083,4 +1085,44 @@ func TestStateProto(t *testing.T) {
 			require.Error(t, err, tt.testName)
 		}
 	}
+}
+
+func Test1(t *testing.T) {
+	var a = sm.State{
+		Version:                          tmstate.Version{},
+		ChainID:                          "",
+		InitialHeight:                    100,
+		LastBlockHeight:                  10,
+		LastBlockTotalTx:                 10,
+		LastBlockID:                      types.BlockID{},
+		LastBlockTime:                    time.Time{},
+		NextValidators:                   nil,
+		Validators:                       nil,
+		LastValidators:                   nil,
+		LastHeightValidatorsChanged:      0,
+		ConsensusParams:                  tmproto.ConsensusParams{},
+		LastHeightConsensusParamsChanged: 0,
+		LastResultsHash:                  nil,
+		AppHash:                          nil,
+	}
+
+	b, err := a.ToProto()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(b)
+	bz, err := proto.Marshal(b)
+	if err != nil {
+		panic(err)
+	}
+	//fmt.Println(string(bz))
+	sp := new(tmstate.State)
+
+	err = proto.Unmarshal(bz, sp)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(sp)
+
 }

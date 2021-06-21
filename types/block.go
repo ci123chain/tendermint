@@ -64,6 +64,19 @@ func (b *Block) ValidateBasic() error {
 		return fmt.Errorf("invalid header: %w", err)
 	}
 
+	// NOTE: Timestamp validation is subtle and handled elsewhere.
+
+	newTxs := int64(len(b.Data.Txs))
+	if b.NumTxs != newTxs {
+		return fmt.Errorf("Wrong Header.NumTxs. Expected %v, got %v",
+			newTxs,
+			b.NumTxs,
+		)
+	}
+	if b.TotalTxs < 0 {
+		return errors.New("Negative Header.TotalTxs")
+	}
+
 	// Validate the last commit and its hash.
 	if b.LastCommit == nil {
 		return errors.New("nil LastCommit")
@@ -266,6 +279,8 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 		}
 		b.LastCommit = lc
 	}
+	b.NumTxs = bp.Header.NumTxs
+	b.TotalTxs = bp.Header.TotalTxs
 
 	return b, b.ValidateBasic()
 }
@@ -464,6 +479,8 @@ func (h *Header) Hash() tmbytes.HexBytes {
 		cdcEncode(h.ChainID),
 		cdcEncode(h.Height),
 		pbt,
+		cdcEncode(h.NumTxs),
+		cdcEncode(h.TotalTxs),
 		bzbi,
 		cdcEncode(h.LastCommitHash),
 		cdcEncode(h.DataHash),
@@ -487,6 +504,8 @@ func (h *Header) StringIndented(indent string) string {
 %s  ChainID:        %v
 %s  Height:         %v
 %s  Time:           %v
+%s  NumTxs:         %v
+%s  TotalTxs:       %v
 %s  LastBlockID:    %v
 %s  LastCommit:     %v
 %s  Data:           %v
@@ -502,6 +521,8 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.ChainID,
 		indent, h.Height,
 		indent, h.Time,
+		indent, h.NumTxs,
+		indent, h.TotalTxs,
 		indent, h.LastBlockID,
 		indent, h.LastCommitHash,
 		indent, h.DataHash,
@@ -526,6 +547,8 @@ func (h *Header) ToProto() *tmproto.Header {
 		ChainID:            h.ChainID,
 		Height:             h.Height,
 		Time:               h.Time,
+		NumTxs:   		    h.NumTxs,
+		TotalTxs: 			h.TotalTxs,
 		LastBlockId:        h.LastBlockID.ToProto(),
 		ValidatorsHash:     h.ValidatorsHash,
 		NextValidatorsHash: h.NextValidatorsHash,
@@ -557,6 +580,8 @@ func HeaderFromProto(ph *tmproto.Header) (Header, error) {
 	h.ChainID = ph.ChainID
 	h.Height = ph.Height
 	h.Time = ph.Time
+	h.NumTxs = ph.NumTxs
+	h.TotalTxs = ph.TotalTxs
 	h.Height = ph.Height
 	h.LastBlockID = *bi
 	h.ValidatorsHash = ph.ValidatorsHash
