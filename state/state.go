@@ -79,6 +79,9 @@ type State struct {
 
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash []byte
+
+	// last block random
+	LastBlockRandom  types.VrfRandom
 }
 
 // Copy makes a copy of the State for mutating.
@@ -93,6 +96,8 @@ func (state State) Copy() State {
 		LastBlockTotalTx: state.LastBlockTotalTx,
 		LastBlockID:     state.LastBlockID,
 		LastBlockTime:   state.LastBlockTime,
+		LastBlockRandom:  state.LastBlockRandom,
+
 
 		NextValidators:              state.NextValidators.Copy(),
 		Validators:                  state.Validators.Copy(),
@@ -241,7 +246,7 @@ func (state State) MakeBlock(
 	txs []types.Tx,
 	commit *types.Commit,
 	evidence []types.Evidence,
-	proposerAddress []byte,
+	privValidator types.PrivValidator,
 ) (*types.Block, *types.PartSet) {
 
 	// Build base block with block data.
@@ -261,8 +266,19 @@ func (state State) MakeBlock(
 		timestamp, state.LastBlockID, state.LastBlockTotalTx+block.NumTxs,
 		state.Validators.Hash(), state.NextValidators.Hash(),
 		types.HashConsensusParams(state.ConsensusParams), state.AppHash, state.LastResultsHash,
-		proposerAddress,
+		privValidator,
 	)
+
+	if height == 1 {
+		block.Random = types.VrfRandom {
+			Seed: types.GENESIS_SEED,
+			Proof: types.GENESIS_PROOF,
+		}
+	} else {
+		privKey, _ := privValidator.GetPrivKey()
+		block.Random, _ = types.GenerateRandom(
+			privKey.Bytes(), state.LastResultsHash, state.LastBlockRandom.Seed)
+	}
 
 	return block, block.MakePartSet(types.BlockPartSizeBytes)
 }
@@ -346,6 +362,10 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
+		LastBlockRandom: types.VrfRandom {
+			Seed: types.GENESIS_SEED,
+			Proof: types.GENESIS_PROOF,
+		},
 
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,

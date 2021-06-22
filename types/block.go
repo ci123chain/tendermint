@@ -365,6 +365,8 @@ type Header struct {
 	// consensus info
 	EvidenceHash    tmbytes.HexBytes `json:"evidence_hash"`    // evidence included in the block
 	ProposerAddress Address          `json:"proposer_address"` // original proposer of the block
+
+	Random VrfRandom `json:"vrf_random"`
 }
 
 // Populate the Header with state-derived data.
@@ -374,7 +376,7 @@ func (h *Header) Populate(
 	timestamp time.Time, lastBlockID BlockID, totalTxs int64,
 	valHash, nextValHash []byte,
 	consensusHash, appHash, lastResultsHash []byte,
-	proposerAddress Address,
+	proposer PrivValidator,
 ) {
 	h.Version = version
 	h.ChainID = chainID
@@ -386,7 +388,10 @@ func (h *Header) Populate(
 	h.ConsensusHash = consensusHash
 	h.AppHash = appHash
 	h.LastResultsHash = lastResultsHash
-	h.ProposerAddress = proposerAddress
+	pub, _ := proposer.GetPubKey()
+	h.ProposerAddress = pub.Address()
+
+
 }
 
 // ValidateBasic performs stateless validation on a Header returning an error

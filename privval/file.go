@@ -249,6 +249,11 @@ func (pv *FilePV) GetAddress() types.Address {
 func (pv *FilePV) GetPubKey() (crypto.PubKey, error) {
 	return pv.Key.PubKey, nil
 }
+// GetPrivKey returns the private key of the validator.
+// Implements PrivValidator.
+func (pv *FilePV) GetPrivKey() (crypto.PrivKey, error) {
+	return pv.Key.PrivKey, nil
+}
 
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements PrivValidator.

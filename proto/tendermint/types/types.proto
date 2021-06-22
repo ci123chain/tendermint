@@ -79,6 +79,13 @@ message Header {
   // consensus info
   bytes evidence_hash    = 13;  // evidence included in the block
   bytes proposer_address = 14;  // original proposer of the block
+
+  VrfRandom vrf_random = 15 [(gogoproto.customname) = "Random"];
+}
+
+message VrfRandom {
+  bytes seed = 1;
+  bytes proof = 2;
 }
 
 // Data contains the set of transactions included in the block
