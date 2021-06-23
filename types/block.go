@@ -115,6 +115,8 @@ func (b *Block) ValidateBasic() error {
 		)
 	}
 
+
+
 	return nil
 }
 
@@ -390,8 +392,6 @@ func (h *Header) Populate(
 	h.LastResultsHash = lastResultsHash
 	pub, _ := proposer.GetPubKey()
 	h.ProposerAddress = pub.Address()
-
-
 }
 
 // ValidateBasic performs stateless validation on a Header returning an error
@@ -496,6 +496,7 @@ func (h *Header) Hash() tmbytes.HexBytes {
 		cdcEncode(h.LastResultsHash),
 		cdcEncode(h.EvidenceHash),
 		cdcEncode(h.ProposerAddress),
+		cdcEncode(h.Random.Seed),
 	})
 }
 
@@ -564,6 +565,21 @@ func (h *Header) ToProto() *tmproto.Header {
 		LastResultsHash:    h.LastResultsHash,
 		LastCommitHash:     h.LastCommitHash,
 		ProposerAddress:    h.ProposerAddress,
+		Random:  			h.Random.ToProto(),
+	}
+}
+
+func (r VrfRandom) ToProto() *tmproto.VrfRandom {
+	return &tmproto.VrfRandom{
+		Seed: r.Seed,
+		Proof: r.Proof,
+	}
+}
+
+func VrfRandFromProto(random *tmproto.VrfRandom) VrfRandom {
+	return VrfRandom{
+		Seed: random.Seed,
+		Proof: random.Proof,
 	}
 }
 
@@ -598,6 +614,7 @@ func HeaderFromProto(ph *tmproto.Header) (Header, error) {
 	h.LastResultsHash = ph.LastResultsHash
 	h.LastCommitHash = ph.LastCommitHash
 	h.ProposerAddress = ph.ProposerAddress
+	h.Random = VrfRandFromProto(ph.Random)
 
 	return *h, h.ValidateBasic()
 }

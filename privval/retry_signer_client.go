@@ -62,7 +62,9 @@ func (sc *RetrySignerClient) GetPubKey() (crypto.PubKey, error) {
 	}
 	return nil, fmt.Errorf("exhausted all attempts to get pubkey: %w", err)
 }
-
+func (sc *RetrySignerClient) GetPrivKey() (crypto.PrivKey, error) {
+	return nil, nil
+}
 func (sc *RetrySignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {

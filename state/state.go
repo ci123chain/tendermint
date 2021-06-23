@@ -151,6 +151,7 @@ func (state *State) ToProto() (*tmstate.State, error) {
 	sm.InitialHeight = state.InitialHeight
 	sm.LastBlockHeight = state.LastBlockHeight
 	sm.LastBlockTotalTx = state.LastBlockTotalTx
+	sm.LastBlockRandom = state.LastBlockRandom.ToProto()
 
 	sm.LastBlockID = state.LastBlockID.ToProto()
 	sm.LastBlockTime = state.LastBlockTime

@@ -71,6 +71,11 @@ func (pv MockPV) GetPubKey() (crypto.PubKey, error) {
 }
 
 // Implements PrivValidator.
+func (pv MockPV) GetPrivKey() (crypto.PrivKey, error) {
+	return pv.PrivKey, nil
+}
+
+// Implements PrivValidator.
 func (pv MockPV) SignVote(chainID string, vote *tmproto.Vote) error {
 	useChainID := chainID
 	if pv.breakVoteSigning {

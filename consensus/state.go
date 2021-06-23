@@ -1197,7 +1197,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 		return
 	}
 
-	proposerAddr := cs.privValidatorPubKey.Address()
+	//proposerAddr := cs.privValidatorPubKey.Address()
 
 	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, cs.privValidator)
 }

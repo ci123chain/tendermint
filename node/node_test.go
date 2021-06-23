@@ -17,16 +17,13 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	p2pmock "github.com/tendermint/tendermint/p2p/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -219,160 +216,160 @@ func testFreeAddr(t *testing.T) string {
 
 // create a proposal block using real and full
 // mempool and evidence pool and validate it.
-func TestCreateProposalBlock(t *testing.T) {
-	config := cfg.ResetTestRoot("node_create_proposal")
-	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc)
-	err := proxyApp.Start()
-	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+//func TestCreateProposalBlock(t *testing.T) {
+//	config := cfg.ResetTestRoot("node_create_proposal")
+//	defer os.RemoveAll(config.RootDir)
+//	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+//	proxyApp := proxy.NewAppConns(cc)
+//	err := proxyApp.Start()
+//	require.Nil(t, err)
+//	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+//
+//	logger := log.TestingLogger()
+//
+//	var height int64 = 1
+//	state, stateDB, privVals := state(1, height)
+//	stateStore := sm.NewStore(stateDB)
+//	maxBytes := 16384
+//	var partSize uint32 = 256
+//	maxEvidenceBytes := int64(maxBytes / 2)
+//	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
+//	state.ConsensusParams.Evidence.MaxBytes = maxEvidenceBytes
+//	proposerAddr, _ := state.Validators.GetByIndex(0)
+//
+//	// Make Mempool
+//	memplMetrics := mempl.PrometheusMetrics("node_test_1")
+//	mempool := mempl.NewCListMempool(
+//		config.Mempool,
+//		proxyApp.Mempool(),
+//		state.LastBlockHeight,
+//		mempl.WithMetrics(memplMetrics),
+//		mempl.WithPreCheck(sm.TxPreCheck(state)),
+//		mempl.WithPostCheck(sm.TxPostCheck(state)),
+//	)
+//	mempool.SetLogger(logger)
+//
+//	// Make EvidencePool
+//	evidenceDB := dbm.NewMemDB()
+//	blockStore := store.NewBlockStore(dbm.NewMemDB())
+//	evidencePool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
+//	require.NoError(t, err)
+//	evidencePool.SetLogger(logger)
+//
+//	// fill the evidence pool with more evidence
+//	// than can fit in a block
+//	var currentBytes int64 = 0
+//	for currentBytes <= maxEvidenceBytes {
+//		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
+//		currentBytes += int64(len(ev.Bytes()))
+//		evidencePool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
+//	}
+//
+//	evList, size := evidencePool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
+//	require.Less(t, size, state.ConsensusParams.Evidence.MaxBytes+1)
+//	evData := &types.EvidenceData{Evidence: evList}
+//	require.EqualValues(t, size, evData.ByteSize())
+//
+//	// fill the mempool with more txs
+//	// than can fit in a block
+//	txLength := 100
+//	for i := 0; i <= maxBytes/txLength; i++ {
+//		tx := tmrand.Bytes(txLength)
+//		err := mempool.CheckTx(tx, nil, mempl.TxInfo{})
+//		assert.NoError(t, err)
+//	}
+//
+//	blockExec := sm.NewBlockExecutor(
+//		stateStore,
+//		logger,
+//		proxyApp.Consensus(),
+//		mempool,
+//		evidencePool,
+//	)
+//
+//	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+//	block, _ := blockExec.CreateProposalBlock(
+//		height,
+//		state, commit,
+//		proposerAddr,
+//	)
+//
+//	// check that the part set does not exceed the maximum block size
+//	partSet := block.MakePartSet(partSize)
+//	assert.Less(t, partSet.ByteSize(), int64(maxBytes))
+//
+//	partSetFromHeader := types.NewPartSetFromHeader(partSet.Header())
+//	for partSetFromHeader.Count() < partSetFromHeader.Total() {
+//		added, err := partSetFromHeader.AddPart(partSet.GetPart(int(partSetFromHeader.Count())))
+//		require.NoError(t, err)
+//		require.True(t, added)
+//	}
+//	assert.EqualValues(t, partSetFromHeader.ByteSize(), partSet.ByteSize())
+//
+//	err = blockExec.ValidateBlock(state, block)
+//	assert.NoError(t, err)
+//}
+//
+//func TestMaxProposalBlockSize(t *testing.T) {
+//	config := cfg.ResetTestRoot("node_create_proposal")
+//	defer os.RemoveAll(config.RootDir)
+//	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+//	proxyApp := proxy.NewAppConns(cc)
+//	err := proxyApp.Start()
+//	require.Nil(t, err)
+//	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+//
+//	logger := log.TestingLogger()
+//
+//	var height int64 = 1
+//	state, stateDB, _ := state(1, height)
+//	stateStore := sm.NewStore(stateDB)
+//	var maxBytes int64 = 16384
+//	var partSize uint32 = 256
+//	state.ConsensusParams.Block.MaxBytes = maxBytes
+//	proposerAddr, _ := state.Validators.GetByIndex(0)
+//
+//	// Make Mempool
+//	memplMetrics := mempl.PrometheusMetrics("node_test_2")
+//	mempool := mempl.NewCListMempool(
+//		config.Mempool,
+//		proxyApp.Mempool(),
+//		state.LastBlockHeight,
+//		mempl.WithMetrics(memplMetrics),
+//		mempl.WithPreCheck(sm.TxPreCheck(state)),
+//		mempl.WithPostCheck(sm.TxPostCheck(state)),
+//	)
+//	mempool.SetLogger(logger)
+//
+//	// fill the mempool with one txs just below the maximum size
+//	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))
+//	tx := tmrand.Bytes(txLength - 4) // to account for the varint
+//	err = mempool.CheckTx(tx, nil, mempl.TxInfo{})
+//	assert.NoError(t, err)
 
-	logger := log.TestingLogger()
+	//blockExec := sm.NewBlockExecutor(
+	//	stateStore,
+	//	logger,
+	//	proxyApp.Consensus(),
+	//	mempool,
+	//	sm.EmptyEvidencePool{},
+	//)
 
-	var height int64 = 1
-	state, stateDB, privVals := state(1, height)
-	stateStore := sm.NewStore(stateDB)
-	maxBytes := 16384
-	var partSize uint32 = 256
-	maxEvidenceBytes := int64(maxBytes / 2)
-	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
-	state.ConsensusParams.Evidence.MaxBytes = maxEvidenceBytes
-	proposerAddr, _ := state.Validators.GetByIndex(0)
-
-	// Make Mempool
-	memplMetrics := mempl.PrometheusMetrics("node_test_1")
-	mempool := mempl.NewCListMempool(
-		config.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheck(sm.TxPreCheck(state)),
-		mempl.WithPostCheck(sm.TxPostCheck(state)),
-	)
-	mempool.SetLogger(logger)
-
-	// Make EvidencePool
-	evidenceDB := dbm.NewMemDB()
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	evidencePool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
-	require.NoError(t, err)
-	evidencePool.SetLogger(logger)
-
-	// fill the evidence pool with more evidence
-	// than can fit in a block
-	var currentBytes int64 = 0
-	for currentBytes <= maxEvidenceBytes {
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
-		currentBytes += int64(len(ev.Bytes()))
-		evidencePool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
-	}
-
-	evList, size := evidencePool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
-	require.Less(t, size, state.ConsensusParams.Evidence.MaxBytes+1)
-	evData := &types.EvidenceData{Evidence: evList}
-	require.EqualValues(t, size, evData.ByteSize())
-
-	// fill the mempool with more txs
-	// than can fit in a block
-	txLength := 100
-	for i := 0; i <= maxBytes/txLength; i++ {
-		tx := tmrand.Bytes(txLength)
-		err := mempool.CheckTx(tx, nil, mempl.TxInfo{})
-		assert.NoError(t, err)
-	}
-
-	blockExec := sm.NewBlockExecutor(
-		stateStore,
-		logger,
-		proxyApp.Consensus(),
-		mempool,
-		evidencePool,
-	)
-
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _ := blockExec.CreateProposalBlock(
-		height,
-		state, commit,
-		proposerAddr,
-	)
-
-	// check that the part set does not exceed the maximum block size
-	partSet := block.MakePartSet(partSize)
-	assert.Less(t, partSet.ByteSize(), int64(maxBytes))
-
-	partSetFromHeader := types.NewPartSetFromHeader(partSet.Header())
-	for partSetFromHeader.Count() < partSetFromHeader.Total() {
-		added, err := partSetFromHeader.AddPart(partSet.GetPart(int(partSetFromHeader.Count())))
-		require.NoError(t, err)
-		require.True(t, added)
-	}
-	assert.EqualValues(t, partSetFromHeader.ByteSize(), partSet.ByteSize())
-
-	err = blockExec.ValidateBlock(state, block)
-	assert.NoError(t, err)
-}
-
-func TestMaxProposalBlockSize(t *testing.T) {
-	config := cfg.ResetTestRoot("node_create_proposal")
-	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc)
-	err := proxyApp.Start()
-	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
-
-	logger := log.TestingLogger()
-
-	var height int64 = 1
-	state, stateDB, _ := state(1, height)
-	stateStore := sm.NewStore(stateDB)
-	var maxBytes int64 = 16384
-	var partSize uint32 = 256
-	state.ConsensusParams.Block.MaxBytes = maxBytes
-	proposerAddr, _ := state.Validators.GetByIndex(0)
-
-	// Make Mempool
-	memplMetrics := mempl.PrometheusMetrics("node_test_2")
-	mempool := mempl.NewCListMempool(
-		config.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheck(sm.TxPreCheck(state)),
-		mempl.WithPostCheck(sm.TxPostCheck(state)),
-	)
-	mempool.SetLogger(logger)
-
-	// fill the mempool with one txs just below the maximum size
-	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))
-	tx := tmrand.Bytes(txLength - 4) // to account for the varint
-	err = mempool.CheckTx(tx, nil, mempl.TxInfo{})
-	assert.NoError(t, err)
-
-	blockExec := sm.NewBlockExecutor(
-		stateStore,
-		logger,
-		proxyApp.Consensus(),
-		mempool,
-		sm.EmptyEvidencePool{},
-	)
-
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _ := blockExec.CreateProposalBlock(
-		height,
-		state, commit,
-		proposerAddr,
-	)
-
-	pb, err := block.ToProto()
-	require.NoError(t, err)
-	assert.Less(t, int64(pb.Size()), maxBytes)
-
-	// check that the part set does not exceed the maximum block size
-	partSet := block.MakePartSet(partSize)
-	assert.EqualValues(t, partSet.ByteSize(), int64(pb.Size()))
-}
+	//commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+	//block, _ := blockExec.CreateProposalBlock(
+	//	height,
+	//	state, commit,
+	//	proposerAddr,
+	//)
+	//
+	//pb, err := block.ToProto()
+	//require.NoError(t, err)
+	//assert.Less(t, int64(pb.Size()), maxBytes)
+	//
+	//// check that the part set does not exceed the maximum block size
+	//partSet := block.MakePartSet(partSize)
+	//assert.EqualValues(t, partSet.ByteSize(), int64(pb.Size()))
+//}
 
 func TestNodeNewNodeCustomReactors(t *testing.T) {
 	config := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
