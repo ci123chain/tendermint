@@ -62,7 +62,7 @@ type Config struct {
 	// Options for services
 	RPC             *RPCConfig             `mapstructure:"rpc"`
 	P2P             *P2PConfig             `mapstructure:"p2p"`
-	TLSConfig       *TLSConfig             `mapstructure:"tlsconfig"`
+	TLSConfig       *TLSConfig             `mapstructure:"tls_config"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
 	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
 	FastSync        *FastSyncConfig        `mapstructure:"fastsync"`
