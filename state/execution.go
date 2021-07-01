@@ -238,6 +238,7 @@ func (blockExec *BlockExecutor) Commit(
 		"committed state",
 		"height", block.Height,
 		"num_txs", len(block.Txs),
+		"proposer", state.Validators.Proposer.Address.String(),
 		"app_hash", fmt.Sprintf("%X", res.Data),
 	)
 

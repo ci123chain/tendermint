@@ -204,6 +204,7 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 	state.LastBlockHeight = pb.LastBlockHeight
 	state.LastBlockTime = pb.LastBlockTime
 	state.LastBlockTotalTx = pb.LastBlockTotalTx
+	state.LastBlockRandom = types.VrfRandFromProto(pb.LastBlockRandom)
 
 	vals, err := types.ValidatorSetFromProto(pb.Validators)
 	if err != nil {
