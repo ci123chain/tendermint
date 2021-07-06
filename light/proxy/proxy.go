@@ -12,6 +12,7 @@ import (
 	lrpc "github.com/tendermint/tendermint/light/rpc"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	"encoding/json"
 )
 
 // A Proxy defines parameters for running an HTTP server proxy.
@@ -21,6 +22,11 @@ type Proxy struct {
 	Client   *lrpc.Client
 	Logger   log.Logger
 	Listener net.Listener
+}
+
+type HealthcheckResponse struct {
+	State	int 		`json:"state"`
+	Data 	interface{}	`json:"data"`
 }
 
 // NewProxy creates the struct used to run an HTTP server for serving light
@@ -104,7 +110,7 @@ func (p *Proxy) listen() (net.Listener, *http.ServeMux, error) {
 	)
 	wm.SetLogger(wmLogger)
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
-
+	mux.HandleFunc("/healthcheck", HealthCheckHandler)
 	// 3) Start a client.
 	if !p.Client.IsRunning() {
 		if err := p.Client.Start(); err != nil {
@@ -119,4 +125,14 @@ func (p *Proxy) listen() (net.Listener, *http.ServeMux, error) {
 	}
 
 	return listener, mux, nil
+}
+
+func HealthCheckHandler(w http.ResponseWriter, req *http.Request) {
+	resultResponse := HealthcheckResponse{
+		State:   200,
+		Data:    "OK",
+	}
+	resultByte, _ := json.Marshal(resultResponse)
+	w.Header().Set("Content-Type","application/json")
+	w.Write(resultByte)
 }
