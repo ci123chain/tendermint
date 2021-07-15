@@ -370,7 +370,7 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 // err - non-nil if duplicate entries or entries with negative voting power are seen
 //
 // No changes are made to 'origChanges'.
-func processChanges(origChanges []*Validator) (updates, removals []*Validator, err error) {
+func (vals *ValidatorSet)processChanges(origChanges []*Validator) (updates, removals []*Validator, err error) {
 	// Make a deep copy of the changes and sort by address.
 	changes := validatorListCopy(origChanges)
 	sort.Sort(ValidatorsByAddress(changes))
@@ -395,7 +395,9 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 				MaxTotalVotingPower, valUpdate.VotingPower)
 			return nil, nil, err
 		case valUpdate.VotingPower == 0:
-			removals = append(removals, valUpdate)
+			if _, exist := vals.GetByAddress(valUpdate.Address); exist != nil {
+				removals = append(removals, valUpdate)
+			}
 		default:
 			updates = append(updates, valUpdate)
 		}
@@ -590,7 +592,7 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 	}
 
 	// Check for duplicates within changes, split in 'updates' and 'deletes' lists (sorted).
-	updates, deletes, err := processChanges(changes)
+	updates, deletes, err := vals.processChanges(changes)
 	if err != nil {
 		return err
 	}
