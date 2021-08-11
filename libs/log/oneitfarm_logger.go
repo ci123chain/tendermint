@@ -16,6 +16,9 @@ func (oneitfarmLogger) Info(msg string, keyvals ...interface{})  {
 func (oneitfarmLogger) Debug(msg string, keyvals ...interface{}) {
 	logger.Debugw(msg, keyvals...)
 }
+func (oneitfarmLogger) Warn(msg string, keyvals ...interface{}) {
+	logger.Warnw(msg, keyvals...)
+}
 func (oneitfarmLogger) Error(msg string, keyvals ...interface{}) {
 	logger.Errorw(msg, keyvals...)
 }
