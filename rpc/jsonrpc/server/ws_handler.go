@@ -75,12 +75,12 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	wsConn, err := wm.Upgrade(w, r, nil)
 	if err != nil {
 		// TODO - return http error
-		wm.logger.Error("Failed to upgrade connection", "err", err)
+		wm.logger.Warn("Failed to upgrade connection", "err", err)
 		return
 	}
 	defer func() {
 		if err := wsConn.Close(); err != nil {
-			wm.logger.Error("Failed to close connection", "err", err)
+			wm.logger.Warn("Failed to close connection", "err", err)
 		}
 	}()
 
@@ -90,11 +90,11 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	err = con.Start() // BLOCKING
 	if err != nil {
-		wm.logger.Error("Failed to start connection", "err", err)
+		wm.logger.Warn("Failed to start connection", "err", err)
 		return
 	}
 	if err := con.Stop(); err != nil {
-		wm.logger.Error("error while stopping connection", "error", err)
+		wm.logger.Warn("error while stopping connection", "error", err)
 	}
 }
 

@@ -480,6 +480,18 @@ max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
 
 # Instrumentation namespace
 namespace = "{{ .Instrumentation.Namespace }}"
+
+#######################################################
+###         GasPrice Configuration Options          ###
+#######################################################
+
+[gas_price]
+
+#BaseGasPrice
+base_gas_price = {{ .GasPrice.BaseGasPrice }}
+
+#GasPriceTxBase
+gas_price_tx_base = {{ .GasPrice.GasPriceTxBase }}
 `
 
 /****** these are for test settings ***********/

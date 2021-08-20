@@ -69,6 +69,7 @@ type Config struct {
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
+	GasPrice        *GasPriceConfig        `mapstructure:"gas_price"`
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
@@ -84,6 +85,7 @@ func DefaultConfig() *Config {
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
+		GasPrice:        DefaultGasPrice(),
 	}
 }
 
@@ -1100,5 +1102,17 @@ func DefaultTLSConfig() *TLSConfig {
 		RemoteTLSCertKeyURI:         "",
 		RemoteTLSDialTimeout:        5,
 		RemoteTLSInsecureSkipVerify: true,
+	}
+}
+
+type GasPriceConfig struct {
+	BaseGasPrice   float64 `mapstructure:"base_gas_price"`
+	GasPriceTxBase float64 `mapstructure:"gas_price_tx_base"`
+}
+
+func DefaultGasPrice() *GasPriceConfig {
+	return &GasPriceConfig{
+		BaseGasPrice:   1,
+		GasPriceTxBase: 10000,
 	}
 }
