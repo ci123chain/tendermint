@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 
 	kitlog "github.com/go-kit/kit/log"
 	"gitlab.oneitfarm.com/bifrost/cilog"
@@ -49,6 +51,14 @@ func InitOneitfarmLogger() {
 	}
 	LogModeOneitfarm = true
 
+	proxyHost := os.Getenv("MSP_LOG_REDIS_HOST")
+	val := strings.Split(proxyHost, ":")
+	if len(val) < 2 {
+		return
+	}
+	domain := val[0]
+	port, _ := strconv.Atoi(val[1])
+
 	conf := &logger.Conf{
 		Level:  zapcore.InfoLevel, // 输出日志等级
 		Caller: true,              // 是否开启记录调用文件夹+行数+函数名
@@ -60,9 +70,9 @@ func InitOneitfarmLogger() {
 		},
 		HookConfig: &redis_hook.HookConfig{
 			Key:  "service_" + appID,            // 填写日志 key
-			Host: "redis-cluster-proxy-log.msp", // 填写 log proxy host
+			Host: domain, // 填写 log proxy host
 			// k8s 集群内填写 redis-cluster-proxy-log.msp
-			Port: 6380, // 填写 log proxy port
+			Port: port, // 填写 log proxy port
 			// 默认填写 6380
 		},
 	}
