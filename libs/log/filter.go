@@ -55,7 +55,7 @@ func (l *filter) Debug(msg string, keyvals ...interface{}) {
 }
 
 func (l *filter) Warn(msg string, keyvals ...interface{}) {
-	l.Error(msg, keyvals)
+	l.next.Warn(msg, keyvals...)
 }
 
 func (l *filter) Error(msg string, keyvals ...interface{}) {

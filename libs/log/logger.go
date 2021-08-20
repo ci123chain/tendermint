@@ -87,5 +87,5 @@ func InitOneitfarmLogger() {
 }
 
 func init() {
-	//InitOneitfarmLogger()
+	InitOneitfarmLogger()
 }
