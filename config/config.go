@@ -394,7 +394,7 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxOpenConnections: 900,
 
 		MaxSubscriptionClients:    100,
-		MaxSubscriptionsPerClient: 5,
+		MaxSubscriptionsPerClient: 20,
 		TimeoutBroadcastTxCommit:  10 * time.Second,
 
 		MaxBodyBytes:   int64(1000000), // 1MB
