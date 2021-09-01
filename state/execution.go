@@ -222,14 +222,14 @@ func (blockExec *BlockExecutor) Commit(
 	// in the ABCI app before Commit.
 	err := blockExec.mempool.FlushAppConn()
 	if err != nil {
-		blockExec.logger.Error("client error during mempool.FlushAppConn", "err", err)
+		blockExec.logger.Warn("client error during mempool.FlushAppConn", "err", err)
 		return nil, 0, err
 	}
 
 	// Commit block, get hash back
 	res, err := blockExec.proxyApp.CommitSync()
 	if err != nil {
-		blockExec.logger.Error("client error during proxyAppConn.CommitSync", "err", err)
+		blockExec.logger.Warn("client error during proxyAppConn.CommitSync", "err", err)
 		return nil, 0, err
 	}
 
@@ -314,7 +314,7 @@ func execBlockOnProxyApp(
 		ByzantineValidators: byzVals,
 	})
 	if err != nil {
-		logger.Error("error in proxyAppConn.BeginBlock", "err", err)
+		logger.Warn("error in proxyAppConn.BeginBlock", "err", err)
 		return nil, err
 	}
 
@@ -329,7 +329,7 @@ func execBlockOnProxyApp(
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
-		logger.Error("error in proxyAppConn.EndBlock", "err", err)
+		logger.Warn("error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
 	}
 
@@ -485,7 +485,7 @@ func fireEvents(
 		ResultBeginBlock: *abciResponses.BeginBlock,
 		ResultEndBlock:   *abciResponses.EndBlock,
 	}); err != nil {
-		logger.Error("failed publishing new block", "err", err)
+		logger.Warn("failed publishing new block", "err", err)
 	}
 
 	if err := eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
@@ -494,7 +494,7 @@ func fireEvents(
 		ResultBeginBlock: *abciResponses.BeginBlock,
 		ResultEndBlock:   *abciResponses.EndBlock,
 	}); err != nil {
-		logger.Error("failed publishing new block header", "err", err)
+		logger.Warn("failed publishing new block header", "err", err)
 	}
 
 	if len(block.Evidence.Evidence) != 0 {
@@ -503,7 +503,7 @@ func fireEvents(
 				Evidence: ev,
 				Height:   block.Height,
 			}); err != nil {
-				logger.Error("failed publishing new evidence", "err", err)
+				logger.Warn("failed publishing new evidence", "err", err)
 			}
 		}
 	}
@@ -516,14 +516,14 @@ func fireEvents(
 			TxID:   fmt.Sprintf("%X", tx.Hash()),
 			Result: *(abciResponses.DeliverTxs[i]),
 		}}); err != nil {
-			logger.Error("failed publishing event TX", "err", err)
+			logger.Warn("failed publishing event TX", "err", err)
 		}
 	}
 
 	if len(validatorUpdates) > 0 {
 		if err := eventBus.PublishEventValidatorSetUpdates(
 			types.EventDataValidatorSetUpdates{ValidatorUpdates: validatorUpdates}); err != nil {
-			logger.Error("failed publishing event", "err", err)
+			logger.Warn("failed publishing event", "err", err)
 		}
 	}
 }
@@ -542,14 +542,14 @@ func ExecCommitBlock(
 ) ([]byte, error) {
 	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
 	if err != nil {
-		logger.Error("failed executing block on proxy app", "height", block.Height, "err", err)
+		logger.Warn("failed executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err
 	}
 
 	// Commit block, get hash back
 	res, err := appConnConsensus.CommitSync()
 	if err != nil {
-		logger.Error("client error during proxyAppConn.CommitSync", "err", res)
+		logger.Warn("client error during proxyAppConn.CommitSync", "err", res)
 		return nil, err
 	}
 

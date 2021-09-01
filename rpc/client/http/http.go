@@ -607,7 +607,7 @@ func (w *WSEvents) OnStart() error {
 // OnStop implements service.Service by stopping WSClient.
 func (w *WSEvents) OnStop() {
 	if err := w.ws.Stop(); err != nil {
-		w.Logger.Error("Can't stop ws client", "err", err)
+		w.Logger.Warn("Can't stop ws client", "err", err)
 	}
 }
 
@@ -697,7 +697,7 @@ func (w *WSEvents) redoSubscriptionsAfter(d time.Duration) {
 	for q := range w.subscriptions {
 		err := w.ws.Subscribe(context.Background(), q)
 		if err != nil {
-			w.Logger.Error("Failed to resubscribe", "err", err)
+			w.Logger.Warn("Failed to resubscribe", "err", err)
 		}
 	}
 }
@@ -715,7 +715,7 @@ func (w *WSEvents) eventListener() {
 			}
 
 			if resp.Error != nil {
-				w.Logger.Error("WS error", "err", resp.Error.Error())
+				w.Logger.Warn("WS error", "err", resp.Error.Error())
 				// Error can be ErrAlreadySubscribed or max client (subscriptions per
 				// client) reached or Tendermint exited.
 				// We can ignore ErrAlreadySubscribed, but need to retry in other
@@ -731,7 +731,7 @@ func (w *WSEvents) eventListener() {
 			result := new(ctypes.ResultEvent)
 			err := tmjson.Unmarshal(resp.Result, result)
 			if err != nil {
-				w.Logger.Error("failed to unmarshal response", "err", err)
+				w.Logger.Warn("failed to unmarshal response", "err", err)
 				continue
 			}
 
@@ -743,7 +743,7 @@ func (w *WSEvents) eventListener() {
 					select {
 					case out <- *result:
 					default:
-						w.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
+						w.Logger.Warn("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
 					}
 				}
 			}
