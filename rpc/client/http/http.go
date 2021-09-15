@@ -569,14 +569,14 @@ type WSEvents struct {
 	ws       *jsonrpcclient.WSClient
 
 	mtx           tmsync.RWMutex
-	subscriptions map[string]chan ctypes.ResultEvent // query -> chan
+	subscriptions map[string]map[string]chan ctypes.ResultEvent // query -> chan
 }
 
 func newWSEvents(remote, endpoint string) (*WSEvents, error) {
 	w := &WSEvents{
 		endpoint:      endpoint,
 		remote:        remote,
-		subscriptions: make(map[string]chan ctypes.ResultEvent),
+		subscriptions: make(map[string]map[string]chan ctypes.ResultEvent),
 	}
 	w.BaseService = *service.NewBaseService(nil, "WSEvents", w)
 
@@ -638,7 +638,10 @@ func (w *WSEvents) Subscribe(ctx context.Context, subscriber, query string,
 	w.mtx.Lock()
 	// subscriber param is ignored because Tendermint will override it with
 	// remote IP anyway.
-	w.subscriptions[query] = outc
+	if w.subscriptions[query] == nil {
+		w.subscriptions[query] = make(map[string]chan ctypes.ResultEvent)
+	}
+	w.subscriptions[query][subscriber] = outc
 	w.mtx.Unlock()
 
 	return outc, nil
@@ -658,9 +661,9 @@ func (w *WSEvents) Unsubscribe(ctx context.Context, subscriber, query string) er
 	}
 
 	w.mtx.Lock()
-	_, ok := w.subscriptions[query]
+	_, ok := w.subscriptions[query][subscriber]
 	if ok {
-		delete(w.subscriptions, query)
+		delete(w.subscriptions[query], subscriber)
 	}
 	w.mtx.Unlock()
 
@@ -681,7 +684,7 @@ func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 	}
 
 	w.mtx.Lock()
-	w.subscriptions = make(map[string]chan ctypes.ResultEvent)
+	w.subscriptions = make(map[string]map[string]chan ctypes.ResultEvent)
 	w.mtx.Unlock()
 
 	return nil
@@ -736,16 +739,27 @@ func (w *WSEvents) eventListener() {
 			}
 
 			w.mtx.RLock()
-			if out, ok := w.subscriptions[result.Query]; ok {
-				if cap(out) == 0 {
-					out <- *result
-				} else {
-					select {
-					case out <- *result:
-					default:
-						w.Logger.Warn("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
+			if conns, ok := w.subscriptions[result.Query]; ok {
+				for _, out := range conns {
+					if cap(out) == 0 {
+						out <- *result
+					} else {
+						select {
+						case out <- *result:
+						default:
+							w.Logger.Warn("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
+						}
 					}
 				}
+				//if cap(out) == 0 {
+				//	out <- *result
+				//} else {
+				//	select {
+				//	case out <- *result:
+				//	default:
+				//		w.Logger.Warn("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
+				//	}
+				//}
 			}
 			w.mtx.RUnlock()
 		case <-w.Quit():

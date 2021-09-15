@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-uuid"
 	"net/http"
 	"reflect"
 	"runtime/debug"
@@ -151,8 +152,10 @@ func newWSConnection(
 	funcMap map[string]*RPCFunc,
 	options ...func(*wsConnection),
 ) *wsConnection {
+	uid, _ := uuid.GenerateUUID()
 	wsc := &wsConnection{
-		remoteAddr:        baseConn.RemoteAddr().String(),
+		//remoteAddr:        baseConn.RemoteAddr().String(),
+		remoteAddr:        uid,
 		baseConn:          baseConn,
 		funcMap:           funcMap,
 		writeWait:         defaultWSWriteWait,
