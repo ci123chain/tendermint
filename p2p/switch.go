@@ -556,7 +556,8 @@ func (sw *Switch) randomSleep(interval time.Duration) {
 func (sw *Switch) IsDialingOrExistingAddress(addr *NetAddress) bool {
 	return sw.dialing.Has(string(addr.ID)) ||
 		sw.peers.Has(addr.ID) ||
-		(!sw.config.AllowDuplicateIP && sw.peers.HasIP(addr.IP))
+		(!sw.config.AllowDuplicateIP && sw.peers.HasIP(addr.IP)) ||
+		string(addr.ID) == string(sw.nodeInfo.ID())
 }
 
 // AddPersistentPeers allows you to set persistent peers. It ignores
@@ -636,7 +637,7 @@ func (sw *Switch) acceptRoutine() {
 					sw.addrBook.AddOurAddress(&addr)
 				}
 
-				sw.Logger.Info(
+				sw.Logger.Error(
 					"Inbound Peer rejected",
 					"err", err,
 					"numPeers", sw.peers.Size(),

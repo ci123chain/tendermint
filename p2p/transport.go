@@ -18,7 +18,7 @@ import (
 const (
 	defaultDialTimeout      = time.Second
 	defaultFilterTimeout    = 5 * time.Second
-	defaultHandshakeTimeout = 3 * time.Second
+	defaultHandshakeTimeout = 5 * time.Second
 )
 
 // IPResolver is a behaviour subset of net.Resolver.
@@ -269,6 +269,7 @@ func (mt *MultiplexTransport) acceptPeers() {
 	for {
 		c, err := mt.listener.Accept()
 		if err != nil {
+			fmt.Println("******  Accept connection err: ", err)
 			// If Close() has been called, silently exit.
 			select {
 			case _, ok := <-mt.closec:
@@ -282,7 +283,7 @@ func (mt *MultiplexTransport) acceptPeers() {
 			mt.acceptc <- accept{err: err}
 			return
 		}
-
+		fmt.Println("***** Did receive connection: ", c.RemoteAddr())
 		// Connection upgrade and filtering should be asynchronous to avoid
 		// Head-of-line blocking[0].
 		// Reference:  https://github.com/tendermint/tendermint/issues/2047
@@ -314,14 +315,20 @@ func (mt *MultiplexTransport) acceptPeers() {
 
 			err := mt.filterConn(c)
 			if err == nil {
+				fmt.Println("****** upgrading ")
 				secretConn, nodeInfo, err, netAddr = mt.upgrade(c, nil)
 				if err == nil {
+					fmt.Println("****** upgrade success")
 					addr := c.RemoteAddr()
 					id := PubKeyToID(secretConn.RemotePubKey())
 					if netAddr == nil {
 						netAddr = NewNetAddress(id, addr)
 					}
+				} else {
+					fmt.Println("****** upgrade incomming Conn Error: ", err)
 				}
+			} else {
+				fmt.Println("****** fileter incomming Conn Error: ", err)
 			}
 
 			select {
