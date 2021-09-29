@@ -307,6 +307,7 @@ func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
 
 		c := tls.Config{
 			Certificates:       []tls.Certificate{cert},
+			ServerName: 		na.Host,
 			InsecureSkipVerify: Config.TLSConfig.RemoteTLSInsecureSkipVerify,
 		}
 
