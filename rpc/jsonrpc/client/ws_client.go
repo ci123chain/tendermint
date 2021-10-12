@@ -89,7 +89,9 @@ func NewWS(remoteAddr, endpoint string, options ...func(*WSClient)) (*WSClient, 
 		return nil, err
 	}
 	// default to ws protocol, unless wss is explicitly specified
-	if parsedURL.Scheme != protoWSS {
+	if parsedURL.Scheme == protoWSS || parsedURL.Scheme == protoHTTPS {
+		parsedURL.Scheme = protoWSS
+	} else {
 		parsedURL.Scheme = protoWS
 	}
 
@@ -261,7 +263,7 @@ func (c *WSClient) nextRequestID() types.JSONRPCIntID {
 func (c *WSClient) dial() error {
 	dialer := &websocket.Dialer{
 		NetDial: c.Dialer,
-		Proxy:   http.ProxyFromEnvironment,
+		//Proxy:   http.ProxyFromEnvironment,
 	}
 	rHeader := http.Header{}
 	conn, _, err := dialer.Dial(c.protocol+"://"+c.Address+c.Endpoint, rHeader) // nolint:bodyclose
