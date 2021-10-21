@@ -344,6 +344,8 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 			}
 		}
 		go sw.reconnectToPeer(addr)
+	} else {
+		sw.Logger.Info("Peer is not persistent, give up now", "peer", peer)
 	}
 }
 

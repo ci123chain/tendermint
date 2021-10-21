@@ -470,6 +470,7 @@ FOR_LOOP:
 			c.sendMonitor.Update(_n)
 			c.flush()
 		case <-c.quitSendRoutine:
+			c.Logger.Error("Connection quitSendRoutine, exit for loop")
 			break FOR_LOOP
 		case <-c.send:
 			// Send some PacketMsgs
@@ -478,12 +479,14 @@ FOR_LOOP:
 				// Keep sendRoutine awake.
 				select {
 				case c.send <- struct{}{}:
+					c.Logger.Info("Keep sendRoutine awake.")
 				default:
 				}
 			}
 		}
 
 		if !c.IsRunning() {
+			c.Logger.Error("Connection is not running, exit for loop")
 			break FOR_LOOP
 		}
 		if err != nil {
@@ -496,6 +499,8 @@ FOR_LOOP:
 	// Cleanup
 	c.stopPongTimer()
 	close(c.doneSendRoutine)
+	c.Logger.Info("Exit sendRoutine .")
+
 }
 
 // Returns true if messages from channels were exhausted.
