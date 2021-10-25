@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	ed25519VRF "github.com/tendermint/tendermint/vrf/ed25519"
-
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
@@ -121,13 +119,13 @@ func validateBlock(state State, block *types.Block) error {
 	}
 
 	// todo validate vrf
-	if state.LastBlockHeight > 0 {
-		pubkeyBytes := state.Validators.Proposer.PubKey.Bytes()
-		input := ed25519VRF.Sha3256(state.LastResultsHash, state.LastBlockRandom.Seed)
-		if !ed25519VRF.VerifyVrf(pubkeyBytes, input, block.Header.Random.Seed, block.Header.Random.Proof) {
-			return fmt.Errorf("invalid vrf proof, verify proposer: %s", state.Validators.Proposer.Address)
-		}
-	}
+	//if state.LastBlockHeight > 0 {
+	//	pubkeyBytes := state.Validators.Proposer.PubKey.Bytes()
+	//	input := ed25519VRF.Sha3256(state.LastResultsHash, state.LastBlockRandom.Seed)
+	//	if !ed25519VRF.VerifyVrf(pubkeyBytes, input, block.Header.Random.Seed, block.Header.Random.Proof) {
+	//		return fmt.Errorf("invalid vrf proof, verify proposer: %s", state.Validators.Proposer.Address)
+	//	}
+	//}
 
 	// Validate block Time
 	switch {
