@@ -123,11 +123,10 @@ func validateBlock(state State, block *types.Block) error {
 	if state.LastBlockHeight > 0 {
 		_, proposalV := state.Validators.GetByAddress(block.ProposerAddress.Bytes())
 		pubkeyBytes := proposalV.PubKey.Bytes()
-		fmt.Println("****Proposal in state: ", state.Validators.GetProposer().Address.String(), " in block: ", block.ProposerAddress.String())
-		//pubkeyBytes := state.Validators.Proposer.PubKey.Bytes()
 		input := ed25519VRF.Sha3256(state.LastResultsHash, state.LastBlockRandom.Seed)
 		if !ed25519VRF.VerifyVrf(pubkeyBytes, input, block.Header.Random.Seed, block.Header.Random.Proof) {
-			return fmt.Errorf("invalid vrf proof, verify proposer: %s", state.Validators.Proposer.Address)
+			fmt.Printf("Error: invalid vrf proof, verify proposer: %s", state.Validators.Proposer.Address)
+			//return fmt.Errorf("invalid vrf proof, verify proposer: %s", state.Validators.Proposer.Address)
 		}
 	}
 
