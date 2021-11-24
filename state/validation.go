@@ -13,6 +13,11 @@ import (
 // Validate block
 
 func validateBlock(state State, block *types.Block) error {
+	if IgnoreSmbCheck {
+		// debug only
+		return nil
+	}
+
 	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
