@@ -219,7 +219,7 @@ func (mt *MultiplexTransport) Dial(
 	}
 
 	// TODO(xla): Evaluate if we should apply filters if we explicitly dial.
-	if err := mt.filterConn(c); err != nil {
+	if err := mt.filterConn(addr.Host, c); err != nil {
 		return nil, err
 	}
 
@@ -313,9 +313,9 @@ func (mt *MultiplexTransport) acceptPeers() {
 				netAddr    *NetAddress
 			)
 
-			err := mt.filterConn(c)
-			if err == nil {
-				fmt.Println("****** upgrading ")
+			//err := mt.filterConn(c)
+			//if err == nil {
+				fmt.Println("******receive connection and upgrading ")
 				secretConn, nodeInfo, err, netAddr = mt.upgrade(c, nil)
 				if err == nil {
 					fmt.Println("****** upgrade success")
@@ -324,12 +324,15 @@ func (mt *MultiplexTransport) acceptPeers() {
 					if netAddr == nil {
 						netAddr = NewNetAddress(id, addr)
 					}
+					if err := mt.filterConn(netAddr.Host, c); err != nil {
+						fmt.Println("****** fileter incomming Conn Error: ", err)
+					}
 				} else {
 					fmt.Println("****** upgrade incomming Conn Error: ", err)
 				}
-			} else {
-				fmt.Println("****** fileter incomming Conn Error: ", err)
-			}
+			//} else {
+			//	fmt.Println("****** fileter incomming Conn Error: ", err)
+			//}
 
 			select {
 			case mt.acceptc <- accept{netAddr, secretConn, nodeInfo, err}:
@@ -346,17 +349,21 @@ func (mt *MultiplexTransport) acceptPeers() {
 // Cleanup removes the given address from the connections set and
 // closes the connection.
 func (mt *MultiplexTransport) Cleanup(p Peer) {
-	mt.conns.RemoveAddr(p.RemoteAddr())
+	netaddr, err := p.NodeInfo().NetAddress()
+	if err != nil {
+		fmt.Println("Error clean up: ", err)
+	}
+	mt.conns.RemoveAddr(netaddr.Host, p.RemoteAddr())
 	_ = p.CloseConn()
 }
 
-func (mt *MultiplexTransport) cleanup(c net.Conn) error {
-	mt.conns.Remove(c)
+func (mt *MultiplexTransport) cleanup(servername string, c net.Conn) error {
+	mt.conns.Remove(servername, c)
 
 	return c.Close()
 }
 
-func (mt *MultiplexTransport) filterConn(c net.Conn) (err error) {
+func (mt *MultiplexTransport) filterConn(servername string, c net.Conn) (err error) {
 	defer func() {
 		if err != nil {
 			_ = c.Close()
@@ -364,7 +371,7 @@ func (mt *MultiplexTransport) filterConn(c net.Conn) (err error) {
 	}()
 
 	// Reject if connection is already present.
-	if mt.conns.Has(c) {
+	if mt.conns.Has(servername, c) {
 		return ErrRejected{conn: c, isDuplicate: true}
 	}
 
@@ -394,7 +401,7 @@ func (mt *MultiplexTransport) filterConn(c net.Conn) (err error) {
 
 	}
 
-	mt.conns.Set(c, ips)
+	mt.conns.Set(servername, c, ips)
 
 	return nil
 }
@@ -405,7 +412,7 @@ func (mt *MultiplexTransport) upgrade(
 ) (secretConn *conn.SecretConnection, nodeInfo NodeInfo, err error, remote *NetAddress) {
 	defer func() {
 		if err != nil {
-			_ = mt.cleanup(c)
+			_ = mt.cleanup(dialedAddr.Host, c)
 		}
 	}()
 
