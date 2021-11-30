@@ -412,7 +412,11 @@ func (mt *MultiplexTransport) upgrade(
 ) (secretConn *conn.SecretConnection, nodeInfo NodeInfo, err error, remote *NetAddress) {
 	defer func() {
 		if err != nil {
-			_ = mt.cleanup(dialedAddr.Host, c)
+			if dialedAddr != nil {
+				_ = mt.cleanup(dialedAddr.Host, c)
+			} else {
+				fmt.Println("Should Clean up connnection ", c)
+			}
 		}
 	}()
 

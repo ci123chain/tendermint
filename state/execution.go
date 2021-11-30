@@ -450,12 +450,17 @@ func updateState(
 
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
+	totalTx := state.LastBlockTotalTx
+	if !IgnoreSmbCheck {
+		totalTx =+ header.NumTxs
+	}
+
 	return State{
 		Version:                          nextVersion,
 		ChainID:                          state.ChainID,
 		InitialHeight:                    state.InitialHeight,
 		LastBlockHeight:                  header.Height,
-		LastBlockTotalTx:                 state.LastBlockTotalTx + header.NumTxs,
+		LastBlockTotalTx:                 totalTx,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
 		NextValidators:                   nValSet,
