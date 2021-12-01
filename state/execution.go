@@ -452,7 +452,7 @@ func updateState(
 	// It will be filled on state.Save.
 	totalTx := state.LastBlockTotalTx
 	if !IgnoreSmbCheck {
-		totalTx =+ header.NumTxs
+		totalTx += header.NumTxs
 	}
 
 	return State{
