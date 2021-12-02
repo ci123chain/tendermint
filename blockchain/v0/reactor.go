@@ -30,6 +30,12 @@ const (
 	switchToConsensusIntervalSeconds = 1
 )
 
+var SkipWAL bool = false
+
+func SetSkipWAL(isSkip bool) {
+	SkipWAL = isSkip
+}
+
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
@@ -325,7 +331,7 @@ FOR_LOOP:
 				}
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				if ok {
-					conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
+					conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced || SkipWAL)
 				}
 				// else {
 				// should only happen during testing
