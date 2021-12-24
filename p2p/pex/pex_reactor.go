@@ -375,6 +375,7 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	}
 
 	for _, netAddr := range addrs {
+
 		// NOTE: we check netAddr validity and routability in book#AddAddress.
 		err = r.book.AddAddress(netAddr, srcAddr)
 		if err != nil {
@@ -406,16 +407,23 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 }
 
 // SendAddrs sends addrs to the peer.
-func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
-	p.Send(PexChannel, mustEncode(&tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)}))
-}
-
-// SetEnsurePeersPeriod sets period to ensure peers connected.
-func (r *Reactor) SetEnsurePeersPeriod(d time.Duration) {
-	r.ensurePeersPeriod = d
-}
-
-// Ensures that sufficient peers are connected. (continuous)
+//func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
+//	var netAddrs2 []*p2p.NetAddress
+//	for _, net := range netAddrs {
+//		if net.ID == p.ID() {
+//			continue
+//		}
+//		netAddrs2 = append(netAddrs2, net)
+//	}
+//	p.Send(PexChannel, mustEncode(&tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs2)}))
+//}
+//
+//// SetEnsurePeersPeriod sets period to ensure peers connected.
+//func (r *Reactor) SetEnsurePeersPeriod(d time.Duration) {
+//	r.ensurePeersPeriod = d
+//}
+//
+//// Ensures that sufficient peers are connected. (continuous)
 func (r *Reactor) ensurePeersRoutine() {
 	var (
 		seed   = tmrand.NewRand()
