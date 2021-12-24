@@ -80,6 +80,9 @@ const defaultConfigTemplate = `# This is a TOML config file.
 ###                   Main Base Config Options                      ###
 #######################################################################
 
+# EthChainID is evm-module's chainID for eth rpc
+eth_chain_id = "{{ .BaseConfig.EthChainID }}"
+
 # TCP or UNIX socket address of the ABCI application,
 # or the name of an ABCI application compiled in with the Tendermint binary
 proxy_app = "{{ .BaseConfig.ProxyApp }}"

@@ -152,6 +152,9 @@ type BaseConfig struct { //nolint: maligned
 	// chainID is unexposed and immutable but here for convenience
 	chainID string
 
+	// EthChainID is evm-module's chainID for eth rpc
+	EthChainID uint64 `mapstructure:"eth_chain_id"`
+
 	// The root directory for all data.
 	// This should be set in viper so it can unmarshal into this struct
 	RootDir string `mapstructure:"home"`
