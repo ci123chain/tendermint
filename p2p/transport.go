@@ -355,6 +355,7 @@ func (mt *MultiplexTransport) Cleanup(p Peer) {
 	}
 	mt.conns.RemoveAddr(netaddr.Host, p.RemoteAddr())
 	_ = p.CloseConn()
+	fmt.Println("Clean up Conn: ", netaddr.Host)
 }
 
 func (mt *MultiplexTransport) cleanup(servername string, c net.Conn) error {
@@ -364,6 +365,7 @@ func (mt *MultiplexTransport) cleanup(servername string, c net.Conn) error {
 }
 
 func (mt *MultiplexTransport) filterConn(servername string, c net.Conn) (err error) {
+	fmt.Println("filter Conn: ", servername, c)
 	defer func() {
 		if err != nil {
 			_ = c.Close()
