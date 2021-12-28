@@ -43,6 +43,8 @@ const (
 
 	// Maximum difference between current and new block's height.
 	maxDiffBetweenCurrentAndReceivedBlockHeight = 100
+
+	minPeerAmount = 3
 )
 
 var peerTimeout = 15 * time.Second // not const so we can override with tests
@@ -132,7 +134,9 @@ func (pool *BlockPool) makeRequestersRoutine() {
 func (pool *BlockPool) removeTimedoutPeers() {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
-
+	if len(pool.peers) < minPeerAmount {
+		return
+	}
 	for _, peer := range pool.peers {
 		if !peer.didTimeout && peer.numPending > 0 {
 			curRate := peer.recvMonitor.Status().CurRate
