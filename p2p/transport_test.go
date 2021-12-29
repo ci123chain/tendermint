@@ -538,30 +538,7 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 	}
 }
 
-func TestTransportConnDuplicateIPFilter(t *testing.T) {
-	filter := ConnDuplicateIPFilter()
 
-	if err := filter(nil, &testTransportConn{}, nil); err != nil {
-		t.Fatal(err)
-	}
-
-	var (
-		c  = &testTransportConn{}
-		cs = NewConnSet()
-	)
-
-	cs.Set(c, []net.IP{
-		{10, 0, 10, 1},
-		{10, 0, 10, 2},
-		{10, 0, 10, 3},
-	})
-
-	if err := filter(cs, c, []net.IP{
-		{10, 0, 10, 2},
-	}); err == nil {
-		t.Errorf("expected Peer to be rejected as duplicate")
-	}
-}
 
 func TestTransportHandshake(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")

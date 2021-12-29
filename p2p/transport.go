@@ -219,11 +219,12 @@ func (mt *MultiplexTransport) Dial(
 	}
 
 	// TODO(xla): Evaluate if we should apply filters if we explicitly dial.
-	if err := mt.filterConn(addr.Host, c); err != nil {
+	if err := mt.filterConn(addr.ID, c); err != nil {
 		return nil, err
 	}
 
 	secretConn, nodeInfo, err, _ := mt.upgrade(c, &addr)
+
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +324,7 @@ func (mt *MultiplexTransport) acceptPeers() {
 					if netAddr == nil {
 						netAddr = NewNetAddress(id, addr)
 					}
-					if err := mt.filterConn(netAddr.Host, c); err != nil {
+					if err := mt.filterConn(netAddr.ID, c); err != nil {
 						fmt.Println("****** fileter incomming Conn Error: ", err)
 					}
 				} else {
@@ -352,19 +353,19 @@ func (mt *MultiplexTransport) Cleanup(p Peer) {
 	if err != nil {
 		fmt.Println("Error clean up: ", err)
 	}
-	mt.conns.RemoveAddr(netaddr.Host, p.RemoteAddr())
+	mt.conns.RemoveAddr(netaddr.ID, p.RemoteAddr())
 	_ = p.CloseConn()
 	fmt.Println("Clean up Conn: ", netaddr.Host)
 }
 
-func (mt *MultiplexTransport) cleanup(servername string, c net.Conn) error {
-	mt.conns.Remove(servername, c)
+func (mt *MultiplexTransport) cleanup(netID ID, c net.Conn) error {
+	mt.conns.Remove(netID, c)
 
 	return c.Close()
 }
 
-func (mt *MultiplexTransport) filterConn(servername string, c net.Conn) (err error) {
-	fmt.Println("filter Conn: ", servername, c)
+func (mt *MultiplexTransport) filterConn(remoteID ID, c net.Conn) (err error) {
+	fmt.Println("filter Conn: ", remoteID, c)
 	defer func() {
 		if err != nil {
 			_ = c.Close()
@@ -372,7 +373,7 @@ func (mt *MultiplexTransport) filterConn(servername string, c net.Conn) (err err
 	}()
 
 	// Reject if connection is already present.
-	if mt.conns.Has(servername, c) {
+	if mt.conns.Has(remoteID, c) {
 		return ErrRejected{conn: c, isDuplicate: true}
 	}
 
@@ -402,7 +403,7 @@ func (mt *MultiplexTransport) filterConn(servername string, c net.Conn) (err err
 
 	}
 
-	mt.conns.Set(servername, c, ips)
+	mt.conns.Set(remoteID, c, ips)
 
 	return nil
 }
@@ -414,7 +415,7 @@ func (mt *MultiplexTransport) upgrade(
 	defer func() {
 		if err != nil {
 			if dialedAddr != nil {
-				_ = mt.cleanup(dialedAddr.Host, c)
+				_ = mt.cleanup(dialedAddr.ID, c)
 			} else {
 				fmt.Println("Should Clean up connnection ", c)
 			}
