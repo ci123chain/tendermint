@@ -281,7 +281,7 @@ func (mt *MultiplexTransport) acceptPeers() {
 			}
 
 			mt.acceptc <- accept{err: err}
-			return
+			continue
 		}
 		fmt.Println("***** Did receive connection: ", c.RemoteAddr())
 		// Connection upgrade and filtering should be asynchronous to avoid
@@ -302,7 +302,6 @@ func (mt *MultiplexTransport) acceptPeers() {
 					case <-mt.closec:
 						// Give up if the transport was closed.
 						_ = c.Close()
-						return
 					}
 				}
 			}()
