@@ -327,10 +327,10 @@ func (wsc *wsConnection) readRoutine() {
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 					wsc.Logger.Info("Client closed the connection")
 				} else {
-					wsc.Logger.Error("Failed to read request", "err", err)
+					wsc.Logger.Warn("Failed to read request", "err", err)
 				}
 				if err := wsc.Stop(); err != nil {
-					wsc.Logger.Error("Error closing websocket connection", "err", err)
+					wsc.Logger.Warn("Error closing websocket connection", "err", err)
 				}
 				close(wsc.readRoutineQuit)
 				return
@@ -342,7 +342,7 @@ func (wsc *wsConnection) readRoutine() {
 			if err != nil {
 				if err := wsc.WriteRPCResponse(writeCtx,
 					types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err))); err != nil {
-					wsc.Logger.Error("Error writing RPC response", "err", err)
+					wsc.Logger.Warn("Error writing RPC response", "err", err)
 				}
 				continue
 			}

@@ -441,7 +441,7 @@ FOR_LOOP:
 			c.Logger.Debug("Send Ping")
 			_n, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
 			if err != nil {
-				c.Logger.Error("Failed to send PacketPing", "err", err)
+				c.Logger.Warn("Failed to send PacketPing", "err", err)
 				break SELECTION
 			}
 			c.sendMonitor.Update(_n)
@@ -464,13 +464,13 @@ FOR_LOOP:
 			c.Logger.Debug("Send Pong")
 			_n, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 			if err != nil {
-				c.Logger.Error("Failed to send PacketPong", "err", err)
+				c.Logger.Warn("Failed to send PacketPong", "err", err)
 				break SELECTION
 			}
 			c.sendMonitor.Update(_n)
 			c.flush()
 		case <-c.quitSendRoutine:
-			c.Logger.Error("Connection quitSendRoutine, exit for loop")
+			c.Logger.Warn("Connection quitSendRoutine, exit for loop")
 			break FOR_LOOP
 		case <-c.send:
 			// Send some PacketMsgs

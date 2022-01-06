@@ -327,7 +327,7 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 		return
 	}
 
-	sw.Logger.Error("Stopping peer for error", "peer", peer, "err", reason)
+	sw.Logger.Warn("Stopping peer for error", "peer", peer, "err", reason)
 	sw.stopAndRemovePeer(peer, reason)
 
 	if peer.IsPersistent() {
@@ -338,7 +338,7 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 			var err error
 			addr, err = peer.NodeInfo().NetAddress()
 			if err != nil {
-				sw.Logger.Error("Wanted to reconnect to inbound peer, but self-reported address is wrong",
+				sw.Logger.Warn("Wanted to reconnect to inbound peer, but self-reported address is wrong",
 					"peer", peer, "err", err)
 				return
 			}
