@@ -3,6 +3,8 @@ package tmhash
 import (
 	"crypto/sha256"
 	"hash"
+	"sync"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -15,10 +17,23 @@ func New() hash.Hash {
 	return sha256.New()
 }
 
-// Sum returns the SHA256 of the bz.
+var keccakPool = sync.Pool{
+	// NewLegacyKeccak256 uses non-standard padding
+	// and is incompatible with sha3.Sum256
+	New: func() interface{} { return sha3.NewLegacyKeccak256() },
+}
+
+// Sum returns the non-standard Keccak256 of the bz.
 func Sum(bz []byte) []byte {
-	h := sha256.Sum256(bz)
-	return h[:]
+	sha := keccakPool.Get().(hash.Hash)
+	defer func() {
+		// better to reset before putting it to the pool
+		sha.Reset()
+		keccakPool.Put(sha)
+	}()
+	sha.Reset()
+	sha.Write(bz)
+	return sha.Sum(nil)
 }
 
 //-------------------------------------------------------------
