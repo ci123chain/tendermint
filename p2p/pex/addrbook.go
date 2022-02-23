@@ -383,13 +383,13 @@ func (a *addrBook) ReinstateBadPeers() {
 
 		bucket, err := a.calcNewBucket(ka.Addr, ka.Src)
 		if err != nil {
-			a.Logger.Error("Failed to calculate new bucket (bad peer won't be reinstantiated)",
+			a.Logger.Warn("Failed to calculate new bucket (bad peer won't be reinstantiated)",
 				"addr", ka.Addr, "err", err)
 			continue
 		}
 
 		if err := a.addToNewBucket(ka, bucket); err != nil {
-			a.Logger.Error("Error adding peer to new bucket", "err", err)
+			a.Logger.Warn("Error adding peer to new bucket", "err", err)
 		}
 		delete(a.badPeers, ka.ID())
 
