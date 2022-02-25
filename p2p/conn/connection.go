@@ -330,14 +330,14 @@ func (c *MConnection) flush() {
 // Catch panics, usually caused by remote disconnects.
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
-		c.Logger.Error("MConnection panicked", "err", r, "stack", string(debug.Stack()))
+		c.Logger.Warn("MConnection panicked", "err", r, "stack", string(debug.Stack()))
 		c.stopForError(fmt.Errorf("recovered from panic: %v", r))
 	}
 }
 
 func (c *MConnection) stopForError(r interface{}) {
 	if err := c.Stop(); err != nil {
-		c.Logger.Error("Error stopping connection", "err", err)
+		c.Logger.Warn("Error stopping connection", "err", err)
 	}
 	if atomic.CompareAndSwapUint32(&c.errored, 0, 1) {
 		if c.onError != nil {
@@ -369,7 +369,7 @@ func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 		default:
 		}
 	} else {
-		c.Logger.Debug("Send failed", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
+		c.Logger.Warn("Send failed", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
 	}
 	return success
 }
@@ -386,7 +386,7 @@ func (c *MConnection) TrySend(chID byte, msgBytes []byte) bool {
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
 	if !ok {
-		c.Logger.Error(fmt.Sprintf("Cannot send bytes, unknown channel %X", chID))
+		c.Logger.Warn(fmt.Sprintf("Cannot send bytes, unknown channel %X", chID))
 		return false
 	}
 
@@ -486,11 +486,11 @@ FOR_LOOP:
 		}
 
 		if !c.IsRunning() {
-			c.Logger.Error("Connection is not running, exit for loop")
+			c.Logger.Warn("Connection is not running, exit for loop")
 			break FOR_LOOP
 		}
 		if err != nil {
-			c.Logger.Error("Connection failed @ sendRoutine", "conn", c, "err", err)
+			c.Logger.Warn("Connection failed @ sendRoutine", "conn", c, "err", err)
 			c.stopForError(err)
 			break FOR_LOOP
 		}
