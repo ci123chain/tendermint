@@ -25,9 +25,9 @@ var _ Logger = (*tmLogger)(nil)
 // using go-kit's log as an underlying logger and our custom formatter. Note
 // that underlying logger could be swapped with something else.
 func NewTMLogger(w io.Writer) Logger {
-	if OneitfarmLog() {
-		return NewOneitfarmLogger()
-	}
+	//if OneitfarmLog() {
+	//	return NewOneitfarmLogger()
+	//}
 
 	// Color by level value
 	colorFn := func(keyvals ...interface{}) term.FgBgColor {
@@ -88,6 +88,7 @@ func (l *tmLogger) Error(msg string, keyvals ...interface{}) {
 		lWithMsg.Log("err", err)
 	}
 }
+
 // With returns a new contextual logger with keyvals prepended to those passed
 // to calls to Info, Debug or Error.
 func (l *tmLogger) With(keyvals ...interface{}) Logger {
