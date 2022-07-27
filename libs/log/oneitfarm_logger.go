@@ -10,17 +10,17 @@ var _ Logger = (*oneitfarmLogger)(nil)
 // NewNopLogger returns a logger that doesn't do anything.
 func NewOneitfarmLogger() Logger { return &oneitfarmLogger{} }
 
-func (oneitfarmLogger) Info(msg string, keyvals ...interface{})  {
-	logger.Infow(msg, keyvals...)
+func (oneitfarmLogger) Info(msg string, keyvals ...interface{}) {
+	go logger.Infow(msg, keyvals...)
 }
 func (oneitfarmLogger) Debug(msg string, keyvals ...interface{}) {
-	logger.Debugw(msg, keyvals...)
+	go logger.Debugw(msg, keyvals...)
 }
 func (oneitfarmLogger) Warn(msg string, keyvals ...interface{}) {
-	logger.Warnw(msg, keyvals...)
+	go logger.Warnw(msg, keyvals...)
 }
 func (oneitfarmLogger) Error(msg string, keyvals ...interface{}) {
-	logger.Errorw(msg, keyvals...)
+	go logger.Errorw(msg, keyvals...)
 }
 
 func (l *oneitfarmLogger) With(keyvals ...interface{}) Logger {
