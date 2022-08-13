@@ -520,6 +520,7 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 
 // Implements bcRNotifier
 func (bcR *BlockchainReactor) switchToConsensus() {
+	bcR.Logger.Info("switchToConsensus")
 	conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 	if ok {
 		conR.SwitchToConsensus(bcR.state, bcR.blocksSynced > 0 || bcR.stateSynced)

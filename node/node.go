@@ -286,8 +286,9 @@ func doHandshake(
 	eventBus types.BlockEventPublisher,
 	proxyApp proxy.AppConns,
 	consensusLogger log.Logger) error {
-
+	fmt.Println("node.doHandshake")
 	handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc)
+	consensusLogger.Info("NewHandshaker End")
 	handshaker.SetLogger(consensusLogger)
 	handshaker.SetEventBus(eventBus)
 	if err := handshaker.Handshake(proxyApp); err != nil {
@@ -639,29 +640,35 @@ func NewNode(config *cfg.Config,
 	logger log.Logger,
 	options ...Option) (*Node, error) {
 
+	logger.Info("Init BlockStore, StateDB Begin")
 	blockStore, stateDB, err := initDBs(config, dbProvider)
+	logger.Info("Init BlockStore, StateDB End")
 	if err != nil {
 		return nil, err
 	}
 
 	stateStore := sm.NewStore(stateDB)
-
+	logger.Info("Init StateStore")
 	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
+	logger.Info("Init proxyApp Begin")
 	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger)
 	if err != nil {
 		return nil, err
 	}
+	logger.Info("Init proxyApp End")
 
 	// EventBus and IndexerService must be started before the handshake because
 	// we might need to index the txs of the replayed block as this might not have happened
 	// when the node stopped last time (i.e. the node stopped after it saved the block
 	// but before it indexed the txs, or, endblocker panicked)
+	logger.Info("Init proxyApp Begin")
 	eventBus, err := createAndStartEventBus(logger)
+	logger.Info("Init proxyApp End")
 	if err != nil {
 		return nil, err
 	}
@@ -704,7 +711,9 @@ func NewNode(config *cfg.Config,
 		// Reload the state. It will have the Version.Consensus.App set by the
 		// Handshake, and may have other modifications as well (ie. depending on
 		// what happened during block replay).
+		logger.Info("State LoadStore")
 		state, err = stateStore.Load()
+		logger.Info("State LoadStore End")
 		if err != nil {
 			return nil, fmt.Errorf("cannot load state: %w", err)
 		}
@@ -719,6 +728,7 @@ func NewNode(config *cfg.Config,
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
 	// Make MempoolReactor
+
 	mempoolReactor, mempool := createMempoolAndMempoolReactor(config, proxyApp, state, memplMetrics, logger)
 
 	// Make Evidence Reactor
@@ -742,6 +752,7 @@ func NewNode(config *cfg.Config,
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
 	}
+	logger.Info("createBlockchainReactor")
 
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or fast sync first.
 	// FIXME We need to update metrics here, since other reactors don't have access to them.
@@ -754,7 +765,7 @@ func NewNode(config *cfg.Config,
 		config, state, blockExec, blockStore, mempool, evidencePool,
 		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger,
 	)
-
+	logger.Info("createConsensusReactor")
 	// Set up state sync reactor, and schedule a sync if requested.
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
@@ -762,6 +773,7 @@ func NewNode(config *cfg.Config,
 	stateSyncReactor := statesync.NewReactor(proxyApp.Snapshot(), proxyApp.Query(),
 		config.StateSync.TempDir)
 	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
+	logger.Info("stateSyncReactor")
 
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
 	if err != nil {
@@ -770,6 +782,7 @@ func NewNode(config *cfg.Config,
 
 	// Setup Transport.
 	transport, peerFilters := createTransport(config, nodeInfo, nodeKey, proxyApp)
+	logger.Info("createTransport")
 
 	// Setup Switch.
 	p2pLogger := logger.With("module", "p2p")
@@ -777,6 +790,7 @@ func NewNode(config *cfg.Config,
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
 		stateSyncReactor, consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
 	)
+	logger.Info("createSwitch")
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
