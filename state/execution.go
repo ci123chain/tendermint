@@ -317,7 +317,7 @@ func execBlockOnProxyApp(
 
 	// run txs of block
 	for _, tx := range block.Txs {
-		fmt.Println("DeliverTx ", "Hash:", tx.String())
+		fmt.Println("DeliverTx ", "Hash:", fmt.Sprintf("%X", tx.Hash()))
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
