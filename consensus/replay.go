@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -255,7 +256,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	h.logger.Info("ABCI Handshake App Info",
 		"height", blockHeight,
-		"hash", appHash,
+		"hash", hex.EncodeToString(appHash),
 		"software-version", res.Version,
 		"protocol-version", res.AppVersion,
 	)

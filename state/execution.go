@@ -110,8 +110,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	return state.MakeBlock(height, txs, commit, evidence, privValidator)
 }
 
-
-
 // ValidateBlock validates the given block against the given state.
 // If the block is invalid, it returns an error.
 // Validation does not mutate state, but does require historical information from the stateDB,
@@ -133,7 +131,6 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
-
 	if err := validateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
@@ -320,6 +317,7 @@ func execBlockOnProxyApp(
 
 	// run txs of block
 	for _, tx := range block.Txs {
+		logger.Info("DeliverTx", "Hash", tx.String())
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
@@ -471,7 +469,7 @@ func updateState(
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
 		LastResultsHash:                  ABCIResponsesResultsHash(abciResponses),
 		AppHash:                          nil,
-		LastBlockRandom:  				  header.Random,
+		LastBlockRandom:                  header.Random,
 	}, nil
 }
 
