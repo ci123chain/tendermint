@@ -11,16 +11,16 @@ var _ Logger = (*oneitfarmLogger)(nil)
 func NewOneitfarmLogger() Logger { return &oneitfarmLogger{} }
 
 func (oneitfarmLogger) Info(msg string, keyvals ...interface{}) {
-	go logger.Infow(msg, keyvals...)
+	logger.Infow(msg, keyvals...)
 }
 func (oneitfarmLogger) Debug(msg string, keyvals ...interface{}) {
-	go logger.Debugw(msg, keyvals...)
+	logger.Debugw(msg, keyvals...)
 }
 func (oneitfarmLogger) Warn(msg string, keyvals ...interface{}) {
-	go logger.Warnw(msg, keyvals...)
+	logger.Warnw(msg, keyvals...)
 }
 func (oneitfarmLogger) Error(msg string, keyvals ...interface{}) {
-	go logger.Errorw(msg, keyvals...)
+	logger.Errorw(msg, keyvals...)
 }
 
 func (l *oneitfarmLogger) With(keyvals ...interface{}) Logger {
