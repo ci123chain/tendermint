@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	tmcon "github.com/tendermint/tendermint/consensus"
@@ -380,6 +381,7 @@ func defaultReceiveProposal(cs *State, proposal *types.Proposal) error {
 
 	p := proposal.ToProto()
 	// Verify signature
+	cs.Logger.Debug("--------Debug Msg2-----", "Height", cs.Height, "Proposer", cs.Validators.GetProposer().String(), "ChainID", cs.state.ChainID, "SignByte", types.ProposalSignBytes(cs.state.ChainID, p), "Sign", hex.EncodeToString(proposal.Signature))
 	if !cs.Validators.GetProposer().PubKey.VerifySignature(
 		types.ProposalSignBytes(cs.state.ChainID, p), proposal.Signature) {
 		return ErrInvalidProposalSignature
