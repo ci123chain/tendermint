@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -864,7 +863,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 	}
 
 	if err != nil {
-		cs.Logger.Error(
+		cs.Logger.Warn(
 			"failed to process message",
 			"height", cs.Height,
 			"round", cs.Round,
@@ -1809,10 +1808,12 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 
 	p := proposal.ToProto()
 	// Verify signature
-	cs.Logger.Info("--------Debug Msg-----", "Height", cs.Height, "Proposer", cs.Validators.GetProposer().String(), "ChainID", cs.state.ChainID, "SignByte", types.ProposalSignBytes(cs.state.ChainID, p), "Sign", hex.EncodeToString(proposal.Signature))
+	//cs.Logger.Info("--------Debug Msg-----", "Height", cs.Height, "Proposer", cs.Validators.GetProposer().String(), "ChainID", cs.state.ChainID, "SignByte", types.ProposalSignBytes(cs.state.ChainID, p), "Sign", hex.EncodeToString(proposal.Signature))
 	if !cs.Validators.GetProposer().PubKey.VerifySignature(
 		types.ProposalSignBytes(cs.state.ChainID, p), proposal.Signature,
 	) {
+		cs.Logger.Info("Current", "Proposer", cs.Validators.GetProposer().Address.String())
+		cs.Logger.Info("Validators", "Validators", cs.Validators.String())
 		return ErrInvalidProposalSignature
 	}
 
